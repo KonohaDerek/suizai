@@ -1,0 +1,28 @@
+# Android / Gradle
+.gradle/
+build/
+local.properties
+*.apk
+*.aab
+
+# Apple / Xcode
+DerivedData/
+*.xcuserstate
+xcuserdata/
+
+# Rust
+target/
+
+# IDE and OS
+.idea/
+.DS_Store
+Thumbs.db
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+*.jks
+*.keystore
+*.p12
+*.mobileprovision
