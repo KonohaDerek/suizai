@@ -182,7 +182,7 @@ class SuizaiDocumentsProvider : DocumentsProvider() {
         val row = cursor.newRow()
         values.forEach { (columnName, value) ->
             val columnIndex = cursor.getColumnIndex(columnName)
-            if (columnIndex >= 0) row.add(columnIndex, value)
+            if (columnIndex >= 0) row.add(columnName, value)
         }
     }
 
