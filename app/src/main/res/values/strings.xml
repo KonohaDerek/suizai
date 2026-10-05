@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SUIZAI 隨載</string>
+    <string name="provider_summary">Phase 0 local mock storage</string>
+    <string name="poc_title">SUIZAI Android PoC</string>
+    <string name="poc_description">This build exposes a local mock folder through Android DocumentsProvider. Open the system file picker and confirm that SUIZAI appears under storage providers.</string>
+    <string name="open_picker">Open system file picker</string>
+</resources>

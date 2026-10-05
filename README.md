@@ -27,7 +27,7 @@ Existing mobile file managers are good at browsing remote files. SUIZAI focuses 
 
 ## Repository status
 
-This repository currently contains product and engineering specifications. Implementation begins only after the Android compatibility PoC establishes which storage surface BOOK☆WALKER accepts.
+Phase 0 implementation is in progress. The Android app currently exposes a local mock directory through `DocumentsProvider` so the system file picker and BOOK☆WALKER discovery behavior can be tested before remote backends are introduced.
 
 ## Documentation
 
@@ -36,9 +36,14 @@ This repository currently contains product and engineering specifications. Imple
 - [System architecture](docs/architecture.md)
 - [Storage provider contract](docs/storage-provider-contract.md)
 - [Android compatibility PoC](docs/android-poc.md)
+- [Android Phase 0 runbook](docs/android-phase0-runbook.md)
 - [iOS File Provider plan](docs/ios-file-provider.md)
 - [Security model](docs/security-model.md)
 - [Roadmap](docs/roadmap.md)
+
+## Android Phase 0 quick start
+
+Open the repository in a current Android Studio installation with JDK 17, SDK 37 and Gradle 9.6. Install the debug app, tap **Open system file picker**, and confirm **SUIZAI 隨載** appears in the provider drawer. See the [runbook](docs/android-phase0-runbook.md) for the complete test sequence.
 
 ## Working name
 
