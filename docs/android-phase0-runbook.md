@@ -9,8 +9,10 @@ This build exposes a local mock directory as a system `DocumentsProvider`. It an
 - Android Studio compatible with Android Gradle Plugin 9.4.0
 - Gradle 9.6.0
 - JDK 17
-- Android SDK 37 and Build Tools 36.0.0
+- Android SDK Platform 36 and Build Tools 36.0.0
 - Android 8.0+ test device; Android 14+ preferred for the first run
+
+The initial CI attempt could not install SDK Platform 37. This PoC currently targets API 36 so the build can use an available SDK platform; revisit the target SDK after the supported OS matrix is decided and a newer SDK package is available.
 
 The repository intentionally does not include a generated Gradle wrapper JAR. Open the project with Android Studio and use its configured Gradle 9.6 installation, or generate the wrapper with a trusted local Gradle installation.
 
