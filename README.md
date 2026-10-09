@@ -43,7 +43,7 @@ Phase 0 implementation is in progress. The Android app currently exposes a local
 
 ## Android Phase 0 quick start
 
-Open the repository in a current Android Studio installation with JDK 17, SDK 37 and Gradle 9.6. Install the debug app, tap **Open system file picker**, and confirm **SUIZAI 隨載** appears in the provider drawer. See the [runbook](docs/android-phase0-runbook.md) for the complete test sequence.
+Open the repository in a current Android Studio installation with JDK 17, Android SDK Platform 36, Build Tools 36.0.0 and Gradle 9.6. Install the debug app, tap **Open system file picker**, and confirm **SUIZAI 隨載** appears in the provider drawer. See the [runbook](docs/android-phase0-runbook.md) for the complete test sequence.
 
 ## Working name
 
