@@ -76,11 +76,13 @@ jobs:
           non-sensitive files. There are no remote accounts, cloud providers or root helpers.
           Each CI build uses an ephemeral debug key; upgrading an older build can require
           uninstalling it, which deletes its mock data. Preserve needed fixtures first.
+          Earlier PoC path-based document grants are not migrated: reselect files in the picker.
 
           Device/BOOK☆WALKER compatibility, reboot and lifecycle behavior are pending.
           Follow docs/android-phase0-runbook.md and docs/apk-distribution.md at this tag:
           https://github.com/${GITHUB_REPOSITORY}/tree/${TAG}/docs
           Report model, OS build, this version/checksum, exact steps and results in issue #1.
+          The app-specific external-storage probe and its runbook support issue #3.
           BOOK☆WALKER tests additionally require a dedicated account and replaceable content.
 
           Packages coordinate: tw.suizai:suizai-android-poc:${VERSION}:apk

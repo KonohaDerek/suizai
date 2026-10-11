@@ -18,6 +18,8 @@ If publication partially fails, inspect both the exact Release and package versi
 4. Follow the [Android runbook](android-phase0-runbook.md). Record model/OEM, exact OS build, APK version/commit/checksum, SAF client version, steps and pass/fail evidence in [#1](https://github.com/KonohaDerek/suizai/issues/1). Keep #1 open until all required device checks pass.
 5. If running the automated device suite, install the matching `androidTest.apk` as well, then run `adb shell am instrument -w tw.suizai.app.test/androidx.test.runner.AndroidJUnitRunner`. This is optional for a manual tester.
 
+Earlier PoC builds used path-based document IDs. Those persisted URI grants are not migrated to this UUID-based prototype; reselect files through the system picker. The [external-storage runbook](android-external-storage-runbook.md) covers the additional #3 test entry point; its app-local self-check does not prove BOOK☆WALKER access.
+
 The app uses local mock files. It does not implement remote storage, OAuth, cache encryption, root mounting or interrupted-upload recovery. BOOK☆WALKER results belong to #2/#3 and require a dedicated account and replaceable content. A passing build is not evidence that BOOK☆WALKER can select SUIZAI.
 
 ## Packages
