@@ -20,8 +20,10 @@ On a signed iOS 17+ physical device, install the app, tap **Add Mock Domain**, a
 ## Constraints observed in the design
 
 - The extension reads its own App Group catalog and content, so File Provider requests do not require the main app process. A cross-process file lock serializes catalog writes.
+- This is one fixed mock domain; it does not demonstrate multi-account isolation. Removing the domain does not erase App Group mock data, so adding it again restores prior mock changes.
 - Domain registration and removal use `NSFileProviderManager`; the system owns extension launch and termination. The main app does not run a background service.
 - The mock stores no credentials. A real provider needs Keychain access group credentials, refresh and user-actionable authentication errors. Those are outside this spike.
 - File content is copied into a temporary URL for materialization; this mock keeps permanent copies in App Group storage. Real cache protection, backup exclusion, coordinated eviction, write-back recovery, and conflict handling remain future work.
-- Change enumeration currently re-sends the small catalog. This is sufficient only for a local mock with user-initiated mutations; a real provider needs durable anchors and tombstones for remote edits and deletions.
+- The fixture is small text files only. The extension labels created files as plain text and reads whole files into memory. Content writes and catalog writes are not one crash-atomic transaction. Base-version conflict handling, idempotent create replay, and recovery after an interrupted write are not implemented.
+- Change enumeration uses a persisted sequence and per-container update/deletion journal, including the working set. The log is deliberately unbounded for this tiny local mock; a real provider needs bounded durable anchors, remote event ingestion, and reconciliation.
 - File Provider extension execution time, memory, and system scheduling are constrained. No long-running background transfer or retry behavior is claimed here.

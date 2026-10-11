@@ -7,11 +7,36 @@ struct MockEntry: Codable, Equatable {
     var name: String
     var isDirectory: Bool
     var revision: Int
+    var contentRevision: Int
     var size: Int
 }
 
 enum MockStoreError: Error {
-    case notFound, notDirectory, invalidName, duplicateName, nonEmptyDirectory
+    case notFound, notDirectory, invalidName, duplicateName, nonEmptyDirectory, invalidAnchor
+}
+
+private struct MockChange: Codable {
+    let sequence: Int
+    let containerID: String
+    let itemID: String
+    let deleted: Bool
+}
+
+private struct MockCatalog: Codable {
+    var entries: [MockEntry]
+    var sequence: Int
+    var changes: [MockChange]
+
+    mutating func record(_ itemID: String, in containerID: String, deleted: Bool = false) {
+        sequence += 1
+        changes.append(MockChange(sequence: sequence, containerID: containerID, itemID: itemID, deleted: deleted))
+    }
+}
+
+struct MockChanges {
+    let updates: [MockEntry]
+    let deletions: [String]
+    let anchor: Int
 }
 
 /// A small, process-independent mock catalog. The lock protects app/extension writers.
@@ -29,10 +54,10 @@ final class MockStore {
         if !FileManager.default.fileExists(atPath: catalogURL.path) {
             try locked {
                 if !FileManager.default.fileExists(atPath: catalogURL.path) {
-                    let entries = [MockEntry(id: "folder-books", parentID: Self.rootID, name: "Books", isDirectory: true, revision: 1, size: 0),
-                                   MockEntry(id: "folder-notes", parentID: "folder-books", name: "Notes", isDirectory: true, revision: 1, size: 0),
-                                   MockEntry(id: "file-welcome", parentID: "folder-notes", name: "Welcome.txt", isDirectory: false, revision: 1, size: 19)]
-                    try save(entries)
+                    let entries = [MockEntry(id: "folder-books", parentID: Self.rootID, name: "Books", isDirectory: true, revision: 1, contentRevision: 1, size: 0),
+                                   MockEntry(id: "folder-notes", parentID: "folder-books", name: "Notes", isDirectory: true, revision: 1, contentRevision: 1, size: 0),
+                                   MockEntry(id: "file-welcome", parentID: "folder-notes", name: "Welcome.txt", isDirectory: false, revision: 1, contentRevision: 1, size: 19)]
+                    try save(MockCatalog(entries: entries, sequence: 0, changes: []))
                     try Data("Hello from SUIZAI.\n".utf8).write(to: contentURL("file-welcome"), options: .atomic)
                 }
             }
@@ -48,31 +73,54 @@ final class MockStore {
         return try body()
     }
 
-    private func load() throws -> [MockEntry] { try JSONDecoder().decode([MockEntry].self, from: Data(contentsOf: catalogURL)) }
-    private func save(_ entries: [MockEntry]) throws { try JSONEncoder().encode(entries).write(to: catalogURL, options: .atomic) }
+    private func load() throws -> MockCatalog { try JSONDecoder().decode(MockCatalog.self, from: Data(contentsOf: catalogURL)) }
+    private func save(_ catalog: MockCatalog) throws { try JSONEncoder().encode(catalog).write(to: catalogURL, options: .atomic) }
     private func contentURL(_ id: String) -> URL { contentDirectory.appendingPathComponent(id) }
 
-    func item(_ id: String) throws -> MockEntry? { try locked { try load().first { $0.id == id } } }
-    func children(of id: String) throws -> [MockEntry] { try locked { try load().filter { $0.parentID == id }.sorted { $0.name < $1.name } } }
-    func allItems() throws -> [MockEntry] { try locked { try load() } }
+    func item(_ id: String) throws -> MockEntry? { try locked { try load().entries.first { $0.id == id } } }
+    func item(parentID: String, name: String) throws -> MockEntry? {
+        try locked { try load().entries.first { $0.parentID == parentID && $0.name == name } }
+    }
+    func children(of id: String) throws -> [MockEntry] { try locked { try load().entries.filter { $0.parentID == id }.sorted { $0.name < $1.name } } }
+    func allItems() throws -> [MockEntry] { try locked { try load().entries } }
+    func currentAnchor() throws -> Int { try locked { try load().sequence } }
+
+    func changes(after anchor: Int, in containerID: String) throws -> MockChanges {
+        try locked {
+            let catalog = try load()
+            guard anchor >= 0 && anchor <= catalog.sequence else { throw MockStoreError.invalidAnchor }
+            var latest: [String: MockChange] = [:]
+            for change in catalog.changes where change.sequence > anchor && change.containerID == containerID {
+                latest[change.itemID] = change
+            }
+            let ordered = latest.values.sorted { $0.sequence < $1.sequence }
+            let updates = ordered.filter { !$0.deleted }.compactMap { change in catalog.entries.first { $0.id == change.itemID } }
+            return MockChanges(updates: updates, deletions: ordered.filter(\.deleted).map(\.itemID), anchor: catalog.sequence)
+        }
+    }
 
     @discardableResult func create(parentID: String, name: String, isDirectory: Bool, contents: Data = Data()) throws -> MockEntry {
         try locked {
-            var entries = try load()
+            var catalog = try load()
+            var entries = catalog.entries
             guard parentID == Self.rootID || entries.contains(where: { $0.id == parentID && $0.isDirectory }) else { throw MockStoreError.notDirectory }
             guard valid(name) else { throw MockStoreError.invalidName }
             guard !entries.contains(where: { $0.parentID == parentID && $0.name == name }) else { throw MockStoreError.duplicateName }
-            let entry = MockEntry(id: UUID().uuidString, parentID: parentID, name: name, isDirectory: isDirectory, revision: 1, size: isDirectory ? 0 : contents.count)
+            let entry = MockEntry(id: UUID().uuidString, parentID: parentID, name: name, isDirectory: isDirectory, revision: 1, contentRevision: 1, size: isDirectory ? 0 : contents.count)
             if !isDirectory { try contents.write(to: contentURL(entry.id), options: .atomic) }
             entries.append(entry)
-            try save(entries)
+            catalog.entries = entries
+            catalog.record(entry.id, in: parentID)
+            catalog.record(entry.id, in: "working-set")
+            try save(catalog)
             return entry
         }
     }
 
-    @discardableResult func modify(id: String, parentID: String, name: String, contents: Data?) throws -> MockEntry {
+    @discardableResult func modify(id: String, parentID: String, name: String, contents: Data?) throws -> (entry: MockEntry, oldParentID: String) {
         try locked {
-            var entries = try load()
+            var catalog = try load()
+            var entries = catalog.entries
             guard let index = entries.firstIndex(where: { $0.id == id }) else { throw MockStoreError.notFound }
             guard parentID == Self.rootID || entries.contains(where: { $0.id == parentID && $0.isDirectory }) else { throw MockStoreError.notDirectory }
             guard valid(name) else { throw MockStoreError.invalidName }
@@ -85,30 +133,45 @@ final class MockStore {
                 guard let parent = entries.first(where: { $0.id == ancestor }) else { throw MockStoreError.notFound }
                 ancestor = parent.parentID
             }
-            if let contents { try contents.write(to: contentURL(id), options: .atomic); entries[index].size = contents.count }
+            let oldParentID = entries[index].parentID
+            if let contents {
+                try contents.write(to: contentURL(id), options: .atomic)
+                entries[index].size = contents.count
+                entries[index].contentRevision += 1
+            }
             entries[index].parentID = parentID
             entries[index].name = name
             entries[index].revision += 1
-            try save(entries)
-            return entries[index]
+            catalog.entries = entries
+            if oldParentID != parentID { catalog.record(id, in: oldParentID, deleted: true) }
+            catalog.record(id, in: parentID)
+            catalog.record(id, in: "working-set")
+            try save(catalog)
+            return (entries[index], oldParentID)
         }
     }
 
-    func delete(id: String) throws {
+    @discardableResult func delete(id: String) throws -> MockEntry {
         try locked {
-            var entries = try load()
+            var catalog = try load()
+            var entries = catalog.entries
             guard let entry = entries.first(where: { $0.id == id }) else { throw MockStoreError.notFound }
             guard !entries.contains(where: { $0.parentID == id }) else { throw MockStoreError.nonEmptyDirectory }
             entries.removeAll { $0.id == id }
-            try save(entries)
+            catalog.entries = entries
+            catalog.record(id, in: entry.parentID, deleted: true)
+            catalog.record(id, in: "working-set", deleted: true)
+            try save(catalog)
             if !entry.isDirectory { try? FileManager.default.removeItem(at: contentURL(id)) }
+            return entry
         }
     }
 
-    func materialize(id: String, into url: URL) throws {
+    @discardableResult func materialize(id: String, into url: URL) throws -> MockEntry {
         try locked {
-            guard let entry = try load().first(where: { $0.id == id }), !entry.isDirectory else { throw MockStoreError.notFound }
+            guard let entry = try load().entries.first(where: { $0.id == id }), !entry.isDirectory else { throw MockStoreError.notFound }
             try FileManager.default.copyItem(at: contentURL(id), to: url)
+            return entry
         }
     }
 
