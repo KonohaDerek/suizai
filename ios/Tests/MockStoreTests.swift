@@ -86,6 +86,17 @@ final class MockStoreTests: XCTestCase {
         XCTAssertEqual(try store.changes(after: afterWrite, in: "file-welcome").deletions, ["file-welcome"])
     }
 
+    func testRenamedFolderDoesNotAppearAmongItsOwnChildren() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = try MockStore(directory: directory)
+        let anchor = try store.currentAnchor()
+        _ = try store.modify(id: "folder-notes", parentID: "folder-books", name: "Renamed Notes", contents: nil)
+        XCTAssertEqual(try store.changes(after: anchor, in: "folder-books").updates.map(\.id), ["folder-notes"])
+        XCTAssertTrue(try store.changes(after: anchor, in: "folder-notes").updates.isEmpty)
+        XCTAssertTrue(try store.changes(after: anchor, in: "folder-notes").deletions.isEmpty)
+    }
+
     func testMaterializedBytesMatchSnapshotDuringConcurrentWrites() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: directory) }
