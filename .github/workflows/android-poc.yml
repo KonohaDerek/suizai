@@ -68,6 +68,7 @@ jobs:
   provider-contract:
     name: DocumentsProvider contract (API 33)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Check out source
         uses: actions/checkout@v6
@@ -94,11 +95,16 @@ jobs:
       - name: Enable KVM access
         run: sudo chmod a+rw /dev/kvm
 
+      - name: Free unused native Android toolchains
+        run: rm -rf "${ANDROID_HOME:?}/ndk" "${ANDROID_HOME:?}/cmake"
+
       - name: Run provider contract on emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 33
           target: google_apis
           arch: x86_64
+          disk-size: 2048M
+          emulator-boot-timeout: 300
           disable-animations: true
           script: gradle --no-daemon connectedDebugAndroidTest
