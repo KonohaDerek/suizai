@@ -2,7 +2,7 @@
 
 > Every file, ready anywhere. 你的檔案，隨在隨載。
 
-SUIZAI is a privacy-first mobile storage virtualization layer for iOS and Android. It connects cloud drives, NAS devices, and object storage directly from the phone, presents them through one consistent interface, and makes remote files available to other apps with on-demand caching.
+SUIZAI is a proposed privacy-first mobile storage virtualization layer for iOS and Android. Its goal is to connect cloud drives, NAS devices, and object storage directly from the phone and make remote files available to other apps with on-demand caching. Remote accounts, caching and production security controls are not implemented yet.
 
 ## Product thesis
 
@@ -15,19 +15,19 @@ Existing mobile file managers are good at browsing remote files. SUIZAI focuses 
 - Research an Android compatibility layer for apps that only recognize StorageVolume paths.
 - Add OpenList as an optional provider in v2, never as a v1 dependency.
 
-## Platform scope
+## Planned platform scope
 
 | Capability | Android | iOS |
 |---|---:|---:|
-| Unified storage browser | Yes | Yes |
-| System file picker integration | DocumentsProvider | File Provider Extension |
-| Files on demand and offline pinning | Yes | Yes |
+| Unified storage browser | Planned | Planned |
+| System file picker integration | DocumentsProvider PoC | File Provider spike |
+| Files on demand and offline pinning | Planned | Planned |
 | Virtual SD compatibility research | PoC, privileged/root path | Not supported by iOS |
 | BOOK☆WALKER storage experiment | Primary PoC | Not promised |
 
 ## Repository status
 
-This repository currently contains product and engineering specifications. Implementation begins only after the Android compatibility PoC establishes which storage surface BOOK☆WALKER accepts.
+Phase 0 specifications and prototype work are tracked in [GitHub Projects](https://github.com/users/KonohaDerek/projects/4). The Android local mock is under review in [PR #43](https://github.com/KonohaDerek/suizai/pull/43). A CI build or downloadable test APK does not establish device compatibility. Use only disposable, non-sensitive test files; do not enter real provider credentials. Phase 1 begins after the evidence-based decision in [#10](https://github.com/KonohaDerek/suizai/issues/10).
 
 ## Documentation
 
@@ -39,6 +39,8 @@ This repository currently contains product and engineering specifications. Imple
 - [iOS File Provider plan](docs/ios-file-provider.md)
 - [Security model](docs/security-model.md)
 - [Roadmap](docs/roadmap.md)
+- [Platform support and validation matrix](docs/platform-support.md)
+- [Issue delivery workflow and dependencies](docs/issue-workflow.md)
 
 ## Working name
 
