@@ -16,6 +16,7 @@ import tw.suizai.app.R
 import java.io.File
 import java.io.FileNotFoundException
 import java.io.IOException
+import java.util.UUID
 
 class SuizaiDocumentsProvider : DocumentsProvider() {
     private val rootDirectory: File
@@ -34,8 +35,8 @@ class SuizaiDocumentsProvider : DocumentsProvider() {
             addProjectedRow(
                 this,
                 listOf(
-                    Root.COLUMN_ROOT_ID to DocumentIdCodec.ROOT_ID,
-                    Root.COLUMN_DOCUMENT_ID to DocumentIdCodec.ROOT_ID,
+                    Root.COLUMN_ROOT_ID to ROOT_ID,
+                    Root.COLUMN_DOCUMENT_ID to ROOT_ID,
                     Root.COLUMN_TITLE to requireNotNull(context).getString(R.string.app_name),
                     Root.COLUMN_SUMMARY to requireNotNull(context).getString(R.string.provider_summary),
                     Root.COLUMN_FLAGS to (
@@ -109,6 +110,7 @@ class SuizaiDocumentsProvider : DocumentsProvider() {
         }
     }
 
+    @Synchronized
     override fun createDocument(parentDocumentId: String, mimeType: String, displayName: String): String {
         val parent = resolveFile(parentDocumentId)
         if (!parent.isDirectory) throw FileNotFoundException("Parent is not a directory")
@@ -116,11 +118,17 @@ class SuizaiDocumentsProvider : DocumentsProvider() {
         val target = uniqueChild(parent, safeName)
         val created = if (mimeType == Document.MIME_TYPE_DIR) target.mkdir() else target.createNewFile()
         if (!created) throw FileNotFoundException("Unable to create $displayName")
-        val documentId = idForFile(target)
+        val documentId = try {
+            idForFile(target)
+        } catch (error: IOException) {
+            target.delete()
+            throw error
+        }
         notifyDocumentAndParent(documentId, parentDocumentId)
         return documentId
     }
 
+    @Synchronized
     override fun deleteDocument(documentId: String) {
         val file = resolveFile(documentId)
         if (file.canonicalFile == rootDirectory.canonicalFile) {
@@ -129,10 +137,17 @@ class SuizaiDocumentsProvider : DocumentsProvider() {
         val parentDocumentId = idForFile(requireNotNull(file.parentFile))
         val deleted = if (file.isDirectory) file.deleteRecursively() else file.delete()
         if (!deleted) throw FileNotFoundException("Unable to delete $documentId")
+        val path = pathForId(documentId)
+        val editor = idIndex.edit()
+        idIndex.all.forEach { (id, value) ->
+            if (value == path || (value is String && value.startsWith("$path/"))) editor.remove(id)
+        }
+        if (!editor.commit()) throw IOException("Unable to update document index")
         notifyDocumentAndParent(documentId, parentDocumentId)
     }
 
-    override fun renameDocument(documentId: String, displayName: String): String {
+    @Synchronized
+    override fun renameDocument(documentId: String, displayName: String): String? {
         val source = resolveFile(documentId)
         if (source.canonicalFile == rootDirectory.canonicalFile) {
             throw FileNotFoundException("Cannot rename provider root")
@@ -140,13 +155,21 @@ class SuizaiDocumentsProvider : DocumentsProvider() {
         val parent = requireNotNull(source.parentFile)
         val parentDocumentId = idForFile(parent)
         val safeName = sanitizeDisplayName(displayName)
-        if (source.name == safeName) return documentId
+        if (source.name == safeName) return null
+        val oldPath = pathForId(documentId)
         val target = uniqueChild(parent, safeName)
         if (!source.renameTo(target)) throw FileNotFoundException("Unable to rename $documentId")
-        val renamedDocumentId = idForFile(target)
+        val newPath = relativePath(target)
+        val editor = idIndex.edit()
+        idIndex.all.forEach { (id, value) ->
+            if (value is String) remapPath(value, oldPath, newPath)?.let { editor.putString(id, it) }
+        }
+        if (!editor.commit()) {
+            target.renameTo(source)
+            throw IOException("Unable to update document index")
+        }
         notifyDocumentAndParent(documentId, parentDocumentId)
-        notifyDocumentAndParent(renamedDocumentId, parentDocumentId)
-        return renamedDocumentId
+        return null
     }
 
     private fun includeDocument(cursor: MatrixCursor, file: File) {
@@ -186,13 +209,16 @@ class SuizaiDocumentsProvider : DocumentsProvider() {
         }
     }
 
+    private val idIndex by lazy {
+        requireNotNull(context).getSharedPreferences("document-ids", 0)
+    }
+
+    private fun pathForId(documentId: String): String =
+        idIndex.getString(documentId, null) ?: throw FileNotFoundException("Unknown document ID")
+
     private fun resolveFile(documentId: String): File {
         val root = rootDirectory.canonicalFile
-        val relative = try {
-            DocumentIdCodec.decode(documentId)
-        } catch (error: IllegalArgumentException) {
-            throw FileNotFoundException("Invalid document ID")
-        }
+        val relative = if (documentId == ROOT_ID) "" else pathForId(documentId)
         val candidate = File(root, relative).canonicalFile
         if (candidate != root && !candidate.path.startsWith(root.path + File.separator)) {
             throw FileNotFoundException("Document escapes provider root")
@@ -201,15 +227,25 @@ class SuizaiDocumentsProvider : DocumentsProvider() {
         return candidate
     }
 
+    @Synchronized
     private fun idForFile(file: File): String {
         val root = rootDirectory.canonicalFile
         val candidate = file.canonicalFile
-        if (candidate == root) return DocumentIdCodec.ROOT_ID
+        if (candidate == root) return ROOT_ID
         if (!candidate.path.startsWith(root.path + File.separator)) {
             throw FileNotFoundException("Document escapes provider root")
         }
-        return DocumentIdCodec.encode(candidate.relativeTo(root).invariantSeparatorsPath)
+        val path = candidate.relativeTo(root).invariantSeparatorsPath
+        idIndex.all.entries.firstOrNull { it.value == path }?.let { return it.key }
+        val id = UUID.randomUUID().toString()
+        if (!idIndex.edit().putString(id, path).commit()) {
+            throw IOException("Unable to update document index")
+        }
+        return id
     }
+
+    private fun relativePath(file: File): String =
+        file.canonicalFile.relativeTo(rootDirectory.canonicalFile).invariantSeparatorsPath
 
     private fun mimeType(file: File): String {
         if (file.isDirectory) return Document.MIME_TYPE_DIR
@@ -272,6 +308,7 @@ class SuizaiDocumentsProvider : DocumentsProvider() {
     private fun Array<out String>?.orDefault(default: Array<String>): Array<out String> = this ?: default
 
     private companion object {
+        const val ROOT_ID = "root"
         const val ROOT_DIRECTORY_NAME = "suizai-root"
 
         val ROOT_PROJECTION = arrayOf(
@@ -294,4 +331,10 @@ class SuizaiDocumentsProvider : DocumentsProvider() {
             Document.COLUMN_SIZE
         )
     }
+}
+
+internal fun remapPath(path: String, oldPrefix: String, newPrefix: String): String? = when {
+    path == oldPrefix -> newPrefix
+    path.startsWith("$oldPrefix/") -> newPrefix + path.removePrefix(oldPrefix)
+    else -> null
 }
