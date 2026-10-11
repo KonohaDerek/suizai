@@ -64,7 +64,10 @@ final class ProviderEnumerator: NSObject, NSFileProviderEnumerator {
     func enumerateItems(for observer: NSFileProviderEnumerationObserver, startingAt page: NSFileProviderPage) {
         do {
             let store = try ProviderFiles.store()
-            let entries = containerID == "working-set" ? try store.allItems() : try store.children(of: containerID)
+            let entries: [MockEntry]
+            if containerID == "working-set" { entries = try store.allItems() }
+            else if let item = try store.item(containerID), !item.isDirectory { entries = [item] }
+            else { entries = try store.children(of: containerID) }
             observer.didEnumerate(entries.map(ProviderItem.init))
             observer.finishEnumerating(upTo: nil)
         } catch { observer.finishEnumeratingWithError(ProviderFiles.error(error)) }
@@ -112,7 +115,7 @@ final class Provider: NSObject, NSFileProviderReplicatedExtension {
             let data = isDirectory ? Data() : try url.map { try Data(contentsOf: $0) } ?? Data()
             let entry = try ProviderFiles.store().create(parentID: ProviderFiles.internalID(itemTemplate.parentItemIdentifier), name: itemTemplate.filename, isDirectory: isDirectory, contents: data)
             completionHandler(ProviderItem(entry), [], false, nil)
-            signal(entry.parentID)
+            signal([entry.parentID, entry.id])
         } catch { completionHandler(nil, [], false, ProviderFiles.mutationError(error, parentID: ProviderFiles.internalID(itemTemplate.parentItemIdentifier), name: itemTemplate.filename)) }
         return Progress(totalUnitCount: 1)
     }
@@ -122,8 +125,7 @@ final class Provider: NSObject, NSFileProviderReplicatedExtension {
             let data = try newContents.map { try Data(contentsOf: $0) }
             let (entry, oldParentID) = try store.modify(id: item.itemIdentifier.rawValue, parentID: ProviderFiles.internalID(item.parentItemIdentifier), name: item.filename, contents: data)
             completionHandler(ProviderItem(entry), [], false, nil)
-            signal(oldParentID)
-            signal(entry.parentID)
+            signal([oldParentID, entry.parentID, entry.id])
         } catch { completionHandler(nil, [], false, ProviderFiles.mutationError(error, parentID: ProviderFiles.internalID(item.parentItemIdentifier), name: item.filename)) }
         return Progress(totalUnitCount: 1)
     }
@@ -132,12 +134,13 @@ final class Provider: NSObject, NSFileProviderReplicatedExtension {
             let store = try ProviderFiles.store()
             let old = try store.delete(id: identifier.rawValue)
             completionHandler(nil)
-            signal(old.parentID)
+            signal([old.parentID, old.id])
         } catch { completionHandler(ProviderFiles.error(error)) }
         return Progress(totalUnitCount: 1)
     }
-    private func signal(_ parentID: String) {
-        NSFileProviderManager(for: domain)?.signalEnumerator(for: ProviderFiles.externalID(parentID)) { _ in }
-        NSFileProviderManager(for: domain)?.signalEnumerator(for: .workingSet) { _ in }
+    private func signal(_ ids: [String]) {
+        guard let manager = NSFileProviderManager(for: domain) else { return }
+        for id in Set(ids) { manager.signalEnumerator(for: ProviderFiles.externalID(id)) { _ in } }
+        manager.signalEnumerator(for: .workingSet) { _ in }
     }
 }

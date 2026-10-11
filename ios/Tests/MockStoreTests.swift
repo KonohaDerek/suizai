@@ -72,6 +72,20 @@ final class MockStoreTests: XCTestCase {
         XCTAssertGreaterThan(rewritten.contentRevision, renamed.contentRevision)
     }
 
+    func testSingleItemObserverSeesOwnWritesRenameAndDeletionOnly() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = try MockStore(directory: directory)
+        let anchor = try store.currentAnchor()
+        _ = try store.modify(id: "file-welcome", parentID: "folder-notes", name: "Renamed.txt", contents: Data("updated".utf8))
+        XCTAssertEqual(try store.changes(after: anchor, in: "file-welcome").updates.map(\.id), ["file-welcome"])
+        let afterWrite = try store.currentAnchor()
+        _ = try store.create(parentID: "folder-notes", name: "Other.txt", isDirectory: false)
+        XCTAssertTrue(try store.changes(after: afterWrite, in: "file-welcome").updates.isEmpty)
+        try store.delete(id: "file-welcome")
+        XCTAssertEqual(try store.changes(after: afterWrite, in: "file-welcome").deletions, ["file-welcome"])
+    }
+
     func testMaterializedBytesMatchSnapshotDuringConcurrentWrites() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: directory) }

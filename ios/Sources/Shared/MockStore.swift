@@ -111,6 +111,7 @@ final class MockStore {
             entries.append(entry)
             catalog.entries = entries
             catalog.record(entry.id, in: parentID)
+            catalog.record(entry.id, in: entry.id)
             catalog.record(entry.id, in: "working-set")
             try save(catalog)
             return entry
@@ -145,6 +146,7 @@ final class MockStore {
             catalog.entries = entries
             if oldParentID != parentID { catalog.record(id, in: oldParentID, deleted: true) }
             catalog.record(id, in: parentID)
+            catalog.record(id, in: id)
             catalog.record(id, in: "working-set")
             try save(catalog)
             return (entries[index], oldParentID)
@@ -160,6 +162,7 @@ final class MockStore {
             entries.removeAll { $0.id == id }
             catalog.entries = entries
             catalog.record(id, in: entry.parentID, deleted: true)
+            catalog.record(id, in: id, deleted: true)
             catalog.record(id, in: "working-set", deleted: true)
             try save(catalog)
             if !entry.isDirectory { try? FileManager.default.removeItem(at: contentURL(id)) }
