@@ -51,6 +51,7 @@ class SuizaiDocumentsProvider : DocumentsProvider() {
         }
     }
 
+    @Synchronized
     override fun queryDocument(documentId: String, projection: Array<out String>?): Cursor =
         MatrixCursor(projection.orDefault(DOCUMENT_PROJECTION)).apply {
             includeDocument(this, resolveFile(documentId))
@@ -60,6 +61,7 @@ class SuizaiDocumentsProvider : DocumentsProvider() {
             )
         }
 
+    @Synchronized
     override fun queryChildDocuments(
         parentDocumentId: String,
         projection: Array<out String>?,
@@ -76,6 +78,7 @@ class SuizaiDocumentsProvider : DocumentsProvider() {
         )
     }
 
+    @Synchronized
     override fun isChildDocument(parentDocumentId: String, documentId: String): Boolean {
         val parent = try {
             resolveFile(parentDocumentId).canonicalFile
@@ -91,6 +94,7 @@ class SuizaiDocumentsProvider : DocumentsProvider() {
         return child.path.startsWith(parent.path + File.separator)
     }
 
+    @Synchronized
     override fun openDocument(
         documentId: String,
         mode: String,
@@ -160,13 +164,28 @@ class SuizaiDocumentsProvider : DocumentsProvider() {
         val target = uniqueChild(parent, safeName)
         if (!source.renameTo(target)) throw FileNotFoundException("Unable to rename $documentId")
         val newPath = relativePath(target)
+        val oldPaths = idIndex.all.mapNotNull { (id, value) ->
+            if (value is String && remapPath(value, oldPath, newPath) != null) id to value else null
+        }.toMap()
         val editor = idIndex.edit()
-        idIndex.all.forEach { (id, value) ->
-            if (value is String) remapPath(value, oldPath, newPath)?.let { editor.putString(id, it) }
+        oldPaths.forEach { (id, path) ->
+            editor.putString(id, requireNotNull(remapPath(path, oldPath, newPath)))
         }
         if (!editor.commit()) {
-            target.renameTo(source)
-            throw IOException("Unable to update document index")
+            if (target.renameTo(source)) {
+                val restore = idIndex.edit()
+                oldPaths.forEach { (id, path) -> restore.putString(id, path) }
+                if (!restore.commit()) {
+                    throw IOException("Filesystem rename rolled back, but index restoration was not persisted")
+                }
+                throw IOException("Document rename rolled back after index write failure")
+            }
+            val invalidate = idIndex.edit()
+            oldPaths.keys.forEach { invalidate.remove(it) }
+            if (!invalidate.commit()) {
+                throw IOException("Filesystem rollback failed; document IDs invalidated only in memory")
+            }
+            throw IOException("Document rename failed to persist and filesystem rollback failed")
         }
         notifyDocumentAndParent(documentId, parentDocumentId)
         return null
@@ -235,10 +254,12 @@ class SuizaiDocumentsProvider : DocumentsProvider() {
         if (!candidate.path.startsWith(root.path + File.separator)) {
             throw FileNotFoundException("Document escapes provider root")
         }
+        if (!candidate.exists()) throw FileNotFoundException("Document not found")
         val path = candidate.relativeTo(root).invariantSeparatorsPath
         idIndex.all.entries.firstOrNull { it.value == path }?.let { return it.key }
         val id = UUID.randomUUID().toString()
         if (!idIndex.edit().putString(id, path).commit()) {
+            idIndex.edit().remove(id).commit()
             throw IOException("Unable to update document index")
         }
         return id

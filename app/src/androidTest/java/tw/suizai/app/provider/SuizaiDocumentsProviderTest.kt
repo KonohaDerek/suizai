@@ -16,7 +16,9 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.FileNotFoundException
+import java.util.UUID
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
 @RunWith(AndroidJUnit4::class)
@@ -100,6 +102,48 @@ class SuizaiDocumentsProviderTest {
             assertTrue(changed.await(5, TimeUnit.SECONDS))
         } finally {
             resolver.unregisterContentObserver(observer)
+        }
+    }
+
+    @Test
+    fun concurrentRenameAndQueriesNeverIssueAnotherId() {
+        val prefix = "race-${UUID.randomUUID()}"
+        val file = create(root, "text/plain", "$prefix-a.txt")
+        val expectedId = DocumentsContract.getDocumentId(file)
+        val start = CountDownLatch(1)
+        val pool = Executors.newFixedThreadPool(2)
+        try {
+            val renames = pool.submit {
+                start.await()
+                repeat(100) { index ->
+                    assertEquals(file, DocumentsContract.renameDocument(
+                        resolver, file, if (index % 2 == 0) "$prefix-b.txt" else "$prefix-a.txt"
+                    ))
+                }
+            }
+            val queries = pool.submit {
+                start.await()
+                repeat(100) {
+                    resolver.query(file, arrayOf(Document.COLUMN_DOCUMENT_ID), null, null, null)!!.use { cursor ->
+                        assertTrue(cursor.moveToFirst())
+                        assertEquals(expectedId, cursor.getString(0))
+                    }
+                    resolver.query(
+                        DocumentsContract.buildChildDocumentsUri(authority, "root"),
+                        arrayOf(Document.COLUMN_DOCUMENT_ID, Document.COLUMN_DISPLAY_NAME), null, null, null
+                    )!!.use { cursor ->
+                        while (cursor.moveToNext()) {
+                            if (cursor.getString(1).startsWith(prefix)) assertEquals(expectedId, cursor.getString(0))
+                        }
+                    }
+                }
+            }
+            start.countDown()
+            renames.get(60, TimeUnit.SECONDS)
+            queries.get(60, TimeUnit.SECONDS)
+            resolver.openInputStream(file)!!.close()
+        } finally {
+            pool.shutdownNow()
         }
     }
 
