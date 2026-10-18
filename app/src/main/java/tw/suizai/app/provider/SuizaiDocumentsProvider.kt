@@ -13,6 +13,7 @@ import android.provider.DocumentsContract.Root
 import android.provider.DocumentsProvider
 import android.webkit.MimeTypeMap
 import tw.suizai.app.R
+import tw.suizai.app.AppLanguage
 import java.io.File
 import java.io.FileNotFoundException
 import java.io.IOException
@@ -37,8 +38,8 @@ class SuizaiDocumentsProvider : DocumentsProvider() {
                 listOf(
                     Root.COLUMN_ROOT_ID to ROOT_ID,
                     Root.COLUMN_DOCUMENT_ID to ROOT_ID,
-                    Root.COLUMN_TITLE to requireNotNull(context).getString(R.string.app_name),
-                    Root.COLUMN_SUMMARY to requireNotNull(context).getString(R.string.provider_summary),
+                    Root.COLUMN_TITLE to AppLanguage.localized(requireNotNull(context)).getString(R.string.app_name),
+                    Root.COLUMN_SUMMARY to AppLanguage.localized(requireNotNull(context)).getString(R.string.provider_summary),
                     Root.COLUMN_FLAGS to (
                         Root.FLAG_SUPPORTS_CREATE or Root.FLAG_LOCAL_ONLY or Root.FLAG_SUPPORTS_IS_CHILD
                     ),
@@ -208,7 +209,7 @@ class SuizaiDocumentsProvider : DocumentsProvider() {
             listOf(
                 Document.COLUMN_DOCUMENT_ID to idForFile(file),
                 Document.COLUMN_DISPLAY_NAME to if (isRoot) {
-                    requireNotNull(context).getString(R.string.app_name)
+                    AppLanguage.localized(requireNotNull(context)).getString(R.string.app_name)
                 } else {
                     file.name
                 },
@@ -319,7 +320,7 @@ class SuizaiDocumentsProvider : DocumentsProvider() {
         val sample = File(books, "README.txt")
         if (!sample.exists()) {
             try {
-                sample.writeText("SUIZAI Phase 0 DocumentsProvider test file.\n")
+                sample.writeText(AppLanguage.localized(requireNotNull(context)).getString(R.string.provider_readme) + "\n")
             } catch (_: IOException) {
                 // The provider remains usable even if demo content cannot be seeded.
             }

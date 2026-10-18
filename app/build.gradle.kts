@@ -10,8 +10,8 @@ android {
         applicationId = "tw.suizai.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.0.1-poc"
+        versionCode = 2
+        versionName = "0.0.2-poc"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

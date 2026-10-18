@@ -8,6 +8,7 @@ import android.os.OperationCanceledException
 import android.provider.DocumentsContract
 import android.provider.DocumentsContract.Document
 import android.provider.DocumentsContract.Root
+import tw.suizai.app.AppLanguage
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.After
@@ -56,6 +57,59 @@ class SuizaiDocumentsProviderTest {
             assertEquals("root", it.getString(0))
             assertEquals(Document.MIME_TYPE_DIR, it.getString(1))
             assertTrue(it.isNull(2))
+        }
+    }
+
+    @Test
+    fun languagePersistsAndProviderRootUpdatesWithoutChangingReadme() {
+        val context = instrumentation.targetContext
+        val original = AppLanguage.selected(context)
+        val rootsUri = DocumentsContract.buildRootsUri(authority)
+        resolver.query(rootsUri, null, null, null, null)?.close()
+        val readme = context.filesDir.resolve("suizai-root/Books/README.txt")
+        val originalReadme = readme.readText()
+        val changed = CountDownLatch(1)
+        val observer = object : ContentObserver(null) {
+            override fun onChange(selfChange: Boolean, uri: Uri?) { changed.countDown() }
+        }
+        resolver.registerContentObserver(rootsUri, false, observer)
+        try {
+            AppLanguage.select(context, "ja")
+            assertEquals("ja", AppLanguage.selected(context))
+            assertTrue(changed.await(5, TimeUnit.SECONDS))
+            resolver.query(rootsUri, arrayOf(Root.COLUMN_SUMMARY), null, null, null)!!.use {
+                assertTrue(it.moveToFirst())
+                assertEquals("Phase 0 のローカル模擬ストレージ", it.getString(0))
+            }
+            AppLanguage.select(context, "en")
+            resolver.query(rootsUri, arrayOf(Root.COLUMN_SUMMARY), null, null, null)!!.use {
+                assertTrue(it.moveToFirst())
+                assertEquals("Phase 0 local mock storage", it.getString(0))
+            }
+            assertEquals(originalReadme, readme.readText())
+        } finally {
+            resolver.unregisterContentObserver(observer)
+            AppLanguage.select(context, original)
+        }
+    }
+
+    @Test
+    fun firstLaunchUsesTaiwaneseRegardlessOfDeviceLanguage() {
+        val context = instrumentation.targetContext
+        val preferences = context.getSharedPreferences("app-language", 0)
+        val previous = preferences.getString("language", null)
+        try {
+            assertTrue(preferences.edit().remove("language").commit())
+            assertEquals("zh-TW", AppLanguage.selected(context))
+            assertEquals("語言", AppLanguage.localized(context).getString(tw.suizai.app.R.string.language_label))
+            resolver.query(DocumentsContract.buildRootsUri(authority), arrayOf(Root.COLUMN_SUMMARY), null, null, null)!!.use {
+                assertTrue(it.moveToFirst())
+                assertEquals("Phase 0 本機模擬儲存空間", it.getString(0))
+            }
+        } finally {
+            val editor = preferences.edit()
+            if (previous == null) editor.remove("language") else editor.putString("language", previous)
+            assertTrue(editor.commit())
         }
     }
 

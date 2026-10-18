@@ -7,14 +7,16 @@ import java.util.UUID
 
 /** Creates a fresh fixture below a trusted app-specific external-files directory. */
 internal object ExternalStorageProbe {
-    fun create(root: File): File {
+    class Failure(val messageRes: Int, val path: File? = null) : IOException()
+
+    fun create(root: File, fileContent: String): File {
         val rootPath = root.toPath()
         if (Files.isSymbolicLink(rootPath) || !Files.isDirectory(rootPath)) {
-            throw IOException("App storage directory is unavailable")
+            throw Failure(R.string.probe_error_unavailable)
         }
         val parent = rootPath.resolve("suizai-external-probe")
         if (Files.exists(parent) && (Files.isSymbolicLink(parent) || !Files.isDirectory(parent))) {
-            throw IOException("Test folder name is already in use")
+            throw Failure(R.string.probe_error_occupied)
         }
         if (!Files.exists(parent)) Files.createDirectory(parent)
 
@@ -23,16 +25,16 @@ internal object ExternalStorageProbe {
         val draft = run.resolve("self-check.tmp")
         val renamed = run.resolve("self-check-renamed.tmp")
         try {
-            Files.write(draft, "SUIZAI external storage check\n".toByteArray())
+            Files.write(draft, fileContent.toByteArray(Charsets.UTF_8))
             Files.move(draft, renamed)
-            if (String(Files.readAllBytes(renamed)) != "SUIZAI external storage check\n") {
-                throw IOException("Reopened file did not match")
+            if (String(Files.readAllBytes(renamed), Charsets.UTF_8) != fileContent) {
+                throw Failure(R.string.probe_error_mismatch)
             }
             Files.delete(renamed)
-            Files.write(run.resolve("SUIZAI-test.txt"), "Disposable SUIZAI test file\n".toByteArray())
+            Files.write(run.resolve("SUIZAI-test.txt"), fileContent.toByteArray(Charsets.UTF_8))
         } catch (error: Exception) {
             // Keep the newly created run for inspection; never delete or alter an older run.
-            throw IOException("Test folder created, but the file check failed at $run", error)
+            throw Failure(R.string.probe_error_file_check, run.toFile()).apply { initCause(error) }
         }
         return run.toFile()
     }

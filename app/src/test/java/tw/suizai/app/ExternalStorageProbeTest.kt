@@ -15,14 +15,15 @@ class ExternalStorageProbeTest {
 
     @Test fun rerunKeepsEarlierFiles() {
         val root = temporary.newFolder("external-files")
-        val first = ExternalStorageProbe.create(root)
+        val first = ExternalStorageProbe.create(root, "first language\n")
         val userFile = first.resolve("my-notes.txt")
         userFile.writeText("keep me")
 
-        val second = ExternalStorageProbe.create(root)
+        val second = ExternalStorageProbe.create(root, "second language\n")
         assertNotEquals(first, second)
         assertEquals("keep me", userFile.readText())
-        assertEquals("Disposable SUIZAI test file\n", second.resolve("SUIZAI-test.txt").readText())
+        assertEquals("first language\n", first.resolve("SUIZAI-test.txt").readText())
+        assertEquals("second language\n", second.resolve("SUIZAI-test.txt").readText())
         assertTrue(first.isDirectory)
     }
 
@@ -30,11 +31,11 @@ class ExternalStorageProbeTest {
         val root = temporary.newFolder("external-files")
         val occupied = root.resolve("suizai-external-probe")
         occupied.writeText("existing data")
-        assertThrows(IOException::class.java) { ExternalStorageProbe.create(root) }
+        assertThrows(IOException::class.java) { ExternalStorageProbe.create(root, "content") }
         assertEquals("existing data", occupied.readText())
 
         val notDirectory = temporary.newFile("not-a-directory")
-        assertThrows(IOException::class.java) { ExternalStorageProbe.create(notDirectory) }
+        assertThrows(IOException::class.java) { ExternalStorageProbe.create(notDirectory, "content") }
         assertTrue(Files.isRegularFile(notDirectory.toPath()))
     }
 }
