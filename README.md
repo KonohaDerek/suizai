@@ -27,7 +27,7 @@ Existing mobile file managers are good at browsing remote files. SUIZAI focuses 
 
 ## Repository status
 
-This repository currently contains product and engineering specifications. Implementation begins only after the Android compatibility PoC establishes which storage surface BOOK☆WALKER accepts.
+Phase 0 implementation is in progress. The Android app currently exposes a local mock directory through `DocumentsProvider` so the system file picker and BOOK☆WALKER discovery behavior can be tested before remote backends are introduced.
 
 ## Documentation
 
@@ -36,9 +36,20 @@ This repository currently contains product and engineering specifications. Imple
 - [System architecture](docs/architecture.md)
 - [Storage provider contract](docs/storage-provider-contract.md)
 - [Android compatibility PoC](docs/android-poc.md)
+- [Android Phase 0 runbook](docs/android-phase0-runbook.md)
 - [iOS File Provider plan](docs/ios-file-provider.md)
 - [Security model](docs/security-model.md)
 - [Roadmap](docs/roadmap.md)
+
+## Android Phase 0 實機測試
+
+測試版首次啟動預設台灣正體中文，可切換 English 或日本語並保留選擇。App 操作說明、新建立的測試檔與驗證指南均提供三語；既有檔案保留原文。
+
+- [台灣正體中文測試指南](docs/testing-zh-TW.md)
+- [English testing guide](docs/testing-en.md)
+- [日本語テストガイド](docs/testing-ja.md)
+
+從 [Releases](https://github.com/KonohaDerek/suizai/releases) 下載測試 APK 與指南，或依 [建置說明](docs/android-phase0-runbook.md) 自行建置。請分別記錄系統檔案選擇器與 BOOK☆WALKER 的驗證結果。
 
 ## Working name
 

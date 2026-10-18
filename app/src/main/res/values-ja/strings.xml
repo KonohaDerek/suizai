@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SUIZAI 隨載</string>
+    <string name="provider_summary">Phase 0 のローカル模擬ストレージ</string>
+    <string name="provider_readme">SUIZAI Phase 0 の DocumentsProvider テストファイルです。</string>
+    <string name="poc_title">SUIZAI Android 概念実証</string>
+    <string name="poc_description">この版では、Android DocumentsProvider を通じてローカルの模擬フォルダーを公開します。システムのファイル選択画面を開き、左上の保存先メニューから SUIZAI を選んでください。</string>
+    <string name="language_label">言語</string>
+    <string name="open_picker">システムのファイル選択画面を開く</string>
+    <string name="open_storage_settings">ストレージ設定を開く</string>
+    <string name="external_probe_title">外部ストレージのテスト</string>
+    <string name="external_probe_description">利用可能な各アプリ保存先に、削除可能なテストフォルダーを作成します。下のパスをコピーし、BOOK☆WALKER から見えるか確認してください。このアプリ内のファイル検査だけでは、ほかのアプリからのアクセスは証明できません。</string>
+    <string name="external_probe_pending">テストフォルダーはまだ作成されていません。</string>
+    <string name="external_probe_button">テストフォルダーを作成</string>
+    <string name="external_probe_unavailable">保存先 %1$d：利用不可</string>
+    <string name="external_probe_state_mounted">マウント済み (%1$s)</string>
+    <string name="external_probe_state_unavailable">書き込み不可 (%1$s)</string>
+    <string name="external_probe_volume">保存先 %1$d — %2$s\nアプリ保存先：%3$s</string>
+    <string name="external_probe_created">テストフォルダー：%1$s\nアプリ内のファイル検査：成功</string>
+    <string name="external_probe_failed">アプリ内のファイル検査：失敗 — %1$s</string>
+    <string name="external_probe_unknown_error">不明なエラー</string>
+    <string name="external_probe_fixture">SUIZAI の削除可能なテストファイル\n</string>
+    <string name="probe_error_unavailable">アプリの保存先フォルダーを利用できません</string>
+    <string name="probe_error_occupied">テストフォルダー名はすでに使用されています</string>
+    <string name="probe_error_mismatch">再読み込みしたファイルの内容が一致しません</string>
+    <string name="probe_error_file_check">テストフォルダーは作成されましたが、%1$s のファイル検査に失敗しました</string>
+</resources>

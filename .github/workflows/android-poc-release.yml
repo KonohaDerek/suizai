@@ -1,0 +1,123 @@
+name: Publish Android PoC
+
+on:
+  push:
+    tags: ["android-poc-v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-poc-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: startsWith(github.ref, 'refs/tags/android-poc-v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Validate immutable test version
+        id: version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          [[ "$TAG" =~ ^android-poc-v[0-9]+\.[0-9]+\.[0-9]+-poc\.[0-9]{8}\.[0-9]+$ ]] || exit 1
+          echo "value=${TAG#android-poc-v}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+          server-id: github
+          server-username: GITHUB_ACTOR
+          server-password: GITHUB_TOKEN
+
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: platform-tools
+
+      - name: Install project SDK
+        run: sdkmanager --install "platforms;android-36" "build-tools;36.0.0"
+
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: "9.6.0"
+          cache-provider: basic
+
+      - name: Test and build APKs
+        run: gradle --no-daemon testDebugUnitTest assembleDebug assembleDebugAndroidTest
+
+      - name: Prepare test handoff
+        env:
+          VERSION: ${{ steps.version.outputs.value }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          mkdir -p dist
+          cp app/build/outputs/apk/debug/app-debug.apk "dist/suizai-${VERSION}.apk"
+          cp app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk "dist/suizai-${VERSION}-androidTest.apk"
+          (cd dist && sha256sum *.apk > SHA256SUMS)
+          for locale in zh-TW en ja; do
+            case "$locale" in
+              zh-TW) guide=TESTING.md; version_label=版本; commit_label=來源版本 ;;
+              en) guide=TESTING.en.md; version_label=Version; commit_label=Commit ;;
+              ja) guide=TESTING.ja.md; version_label=バージョン; commit_label=コミット ;;
+            esac
+            {
+              echo "${version_label}: ${VERSION}"
+              echo "${commit_label}: ${GITHUB_SHA}"
+              echo "CI: https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+              echo ""
+              echo "[台灣正體中文](https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/TESTING.md) · [English](https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/TESTING.en.md) · [日本語](https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/TESTING.ja.md)"
+              echo ""
+              cat "docs/testing-${locale}.md"
+              echo ""
+              echo "Packages: tw.suizai:suizai-android-poc:${VERSION}:apk"
+            } > "dist/${guide}"
+          done
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: suizai-android-poc-${{ steps.version.outputs.value }}
+          path: dist/
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Publish APK to GitHub Packages (Maven)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.version.outputs.value }}
+        run: |
+          mvn --batch-mode org.apache.maven.plugins:maven-deploy-plugin:3.1.4:deploy-file \
+            -DrepositoryId=github \
+            -Durl="https://maven.pkg.github.com/${GITHUB_REPOSITORY,,}" \
+            -DgroupId=tw.suizai \
+            -DartifactId=suizai-android-poc \
+            -Dversion="$VERSION" \
+            -Dpackaging=apk \
+            -Dfile="dist/suizai-${VERSION}.apk" \
+            -DgeneratePom=true \
+            -Ddescription="SUIZAI Phase 0 local mock Android test APK"
+
+      - name: Publish prerelease and download links
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.version.outputs.value }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release create "$TAG" dist/* --verify-tag --prerelease \
+            --title "Android 三語測試版 ${VERSION}" --notes-file dist/TESTING.md
+          {
+            echo "## Android 實機測試"
+            echo "[下載 APK 與三語測試指南](https://github.com/${GITHUB_REPOSITORY}/releases/tag/${TAG})"
+            echo ""
+            echo "Packages: tw.suizai:suizai-android-poc:${VERSION}:apk"
+            echo ""
+            echo "台灣正體中文為預設語言，另提供 English 與日本語。實機驗證仍待回報。"
+          } >> "$GITHUB_STEP_SUMMARY"

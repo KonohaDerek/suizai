@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SUIZAI 隨載</string>
+    <string name="provider_summary">Phase 0 本機模擬儲存空間</string>
+    <string name="provider_readme">SUIZAI Phase 0 文件提供者測試檔案。</string>
+    <string name="poc_title">SUIZAI Android 概念驗證</string>
+    <string name="poc_description">此版本透過 Android DocumentsProvider 提供本機模擬資料夾。開啟系統檔案選擇器，點選左上角的儲存位置選單，再選擇 SUIZAI。</string>
+    <string name="language_label">語言</string>
+    <string name="open_picker">開啟系統檔案選擇器</string>
+    <string name="open_storage_settings">開啟儲存空間設定</string>
+    <string name="external_probe_title">外部儲存空間測試</string>
+    <string name="external_probe_description">在每個可用的應用程式儲存位置建立可丟棄的測試資料夾。複製下方路徑，檢查 BOOK☆WALKER 是否能看到。此應用程式的檔案檢查無法證明其他應用程式也能存取。</string>
+    <string name="external_probe_pending">尚未建立測試資料夾。</string>
+    <string name="external_probe_button">建立測試資料夾</string>
+    <string name="external_probe_unavailable">位置 %1$d：無法使用</string>
+    <string name="external_probe_state_mounted">已掛載 (%1$s)</string>
+    <string name="external_probe_state_unavailable">無法寫入 (%1$s)</string>
+    <string name="external_probe_volume">位置 %1$d — %2$s\n應用程式儲存空間：%3$s</string>
+    <string name="external_probe_created">測試資料夾：%1$s\n應用程式檔案檢查：通過</string>
+    <string name="external_probe_failed">應用程式檔案檢查：失敗 — %1$s</string>
+    <string name="external_probe_unknown_error">未知錯誤</string>
+    <string name="external_probe_fixture">SUIZAI 可丟棄的測試檔案\n</string>
+    <string name="probe_error_unavailable">應用程式儲存資料夾無法使用</string>
+    <string name="probe_error_occupied">測試資料夾名稱已被使用</string>
+    <string name="probe_error_mismatch">重新讀取的檔案內容不符</string>
+    <string name="probe_error_file_check">已建立測試資料夾，但在 %1$s 的檔案檢查失敗</string>
+</resources>

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SUIZAI</string>
+    <string name="provider_summary">Phase 0 local mock storage</string>
+    <string name="provider_readme">SUIZAI Phase 0 DocumentsProvider test file.</string>
+    <string name="poc_title">SUIZAI Android PoC</string>
+    <string name="poc_description">This build exposes a local mock folder through Android DocumentsProvider. Open the system file picker, open the storage-location menu at the upper left, then choose SUIZAI.</string>
+    <string name="language_label">Language</string>
+    <string name="open_picker">Open system file picker</string>
+    <string name="open_storage_settings">Open storage settings</string>
+    <string name="external_probe_title">External storage test</string>
+    <string name="external_probe_description">Create a disposable test folder in each available app storage location. Copy a path below to check whether BOOK☆WALKER can see it. This app’s file check does not prove another app can access it.</string>
+    <string name="external_probe_pending">No test folder created yet.</string>
+    <string name="external_probe_button">Create test folders</string>
+    <string name="external_probe_unavailable">Location %1$d: unavailable</string>
+    <string name="external_probe_state_mounted">mounted (%1$s)</string>
+    <string name="external_probe_state_unavailable">not writable (%1$s)</string>
+    <string name="external_probe_volume">Location %1$d — %2$s\nApp storage: %3$s</string>
+    <string name="external_probe_created">Test folder: %1$s\nApp file check: passed</string>
+    <string name="external_probe_failed">App file check: failed — %1$s</string>
+    <string name="external_probe_unknown_error">unknown error</string>
+    <string name="external_probe_fixture">Disposable SUIZAI test file\n</string>
+    <string name="probe_error_unavailable">App storage directory is unavailable</string>
+    <string name="probe_error_occupied">Test folder name is already in use</string>
+    <string name="probe_error_mismatch">Reopened file did not match</string>
+    <string name="probe_error_file_check">Test folder created, but the file check failed at %1$s</string>
+</resources>
