@@ -1,48 +1,16 @@
-# Android Phase 0 runbook
+# Android Phase 0 實機驗證
 
-## Purpose
+完整操作與回報格式：[台灣正體中文](testing-zh-TW.md) · [English](testing-en.md) · [日本語](testing-ja.md)。App 首次啟動預設台灣正體中文，可在 App 內切換並記住語言。
 
-This build exposes a local mock directory as a system `DocumentsProvider`. It answers one question before remote backends are implemented: does the target app discover or accept a standard Storage Access Framework provider?
+此測試版透過 Android DocumentsProvider 提供本機模擬檔案。驗證時請先展開系統檔案選擇器左上角的儲存位置清單，再尋找 SUIZAI。App 的檔案自我檢查、系統選擇器與 BOOK☆WALKER 相容性是分別需要紀錄的結果。
 
-## Toolchain
+## 自行建置
 
-- Android Studio compatible with Android Gradle Plugin 9.4.0
-- Gradle 9.6.0
 - JDK 17
-- Android SDK Platform 36 and Build Tools 36.0.0
-- Android 8.0+ test device; Android 14+ preferred for the first run
+- Android Gradle Plugin 9.4.0 / Gradle 9.6.0
+- Android SDK Platform 36 / Build Tools 36.0.0
+- Android 8.0 以上測試裝置
 
-The initial CI attempt could not install SDK Platform 37. This PoC currently targets API 36 so the build can use an available SDK platform; revisit the target SDK after the supported OS matrix is decided and a newer SDK package is available.
+在相容的 Android Studio 開啟儲存庫，或使用上述 Gradle 執行 `testDebugUnitTest assembleDebug assembleDebugAndroidTest`。儲存庫未附上產生的 Gradle wrapper JAR；如需 wrapper，請以可信任的本機 Gradle 產生。
 
-The repository intentionally does not include a generated Gradle wrapper JAR. Open the project with Android Studio and use its configured Gradle 9.6 installation, or generate the wrapper with a trusted local Gradle installation.
-
-## Test procedure
-
-1. Open the repository root in Android Studio.
-2. Sync and install the `app` debug build.
-3. Launch **SUIZAI 隨載**.
-4. Tap **Open system file picker**.
-5. Open the navigation drawer and select **SUIZAI 隨載**.
-6. Confirm `Books/README.txt` is visible and readable.
-7. Use a SAF-aware editor to create, rename, modify and delete a test file.
-8. Restart the device and confirm the provider and files remain visible.
-9. Open BOOK☆WALKER settings and record every storage option shown.
-
-## Record results
-
-| Check | Result | Evidence/notes |
-|---|---|---|
-| SUIZAI appears in Android Files | Pending | |
-| Read sample file | Pending | |
-| Create file | Pending | |
-| Write and reopen file | Pending | |
-| Rename file | Pending | |
-| Delete file | Pending | |
-| Survives reboot | Pending | |
-| BOOK☆WALKER lists SUIZAI | Pending | |
-
-## Expected interpretation
-
-- If BOOK☆WALKER lists SUIZAI, proceed with a WebDAV adapter behind the provider.
-- If Android Files sees SUIZAI but BOOK☆WALKER does not, proceed to the virtual-disk and `StorageVolume` experiment.
-- If standard SAF operations fail, fix provider correctness before testing privileged mounts.
+CI 的模擬器結果不會取代實機驗收。先將結果記錄到 #1、#2、#3，再由 #10 整理 Phase 0 決策；列出儲存位置本身不代表可直接進入遠端儲存或進階掛載實作。

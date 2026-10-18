@@ -41,9 +41,15 @@ Phase 0 implementation is in progress. The Android app currently exposes a local
 - [Security model](docs/security-model.md)
 - [Roadmap](docs/roadmap.md)
 
-## Android Phase 0 quick start
+## Android Phase 0 實機測試
 
-Open the repository in a current Android Studio installation with JDK 17, Android SDK Platform 36, Build Tools 36.0.0 and Gradle 9.6. Install the debug app, tap **Open system file picker**, and confirm **SUIZAI 隨載** appears in the provider drawer. See the [runbook](docs/android-phase0-runbook.md) for the complete test sequence.
+測試版首次啟動預設台灣正體中文，可切換 English 或日本語並保留選擇。App 操作說明、新建立的測試檔與驗證指南均提供三語；既有檔案保留原文。
+
+- [台灣正體中文測試指南](docs/testing-zh-TW.md)
+- [English testing guide](docs/testing-en.md)
+- [日本語テストガイド](docs/testing-ja.md)
+
+從 [Releases](https://github.com/KonohaDerek/suizai/releases) 下載測試 APK 與指南，或依 [建置說明](docs/android-phase0-runbook.md) 自行建置。請分別記錄系統檔案選擇器與 BOOK☆WALKER 的驗證結果。
 
 ## Working name
 

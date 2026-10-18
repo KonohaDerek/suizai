@@ -1,6 +1,8 @@
-# Android test APK distribution
+# Android 測試版下載與發佈
 
-The `Publish Android PoC` GitHub Actions workflow builds and tests the tagged source, then publishes **the same application APK** to a GitHub prerelease and GitHub Packages (Maven). It also uploads the instrumentation APK, a testing checklist and SHA-256 checksums to the Release and a 30-day Actions artifact. Release assets and Packages do not use that artifact expiration.
+實機測試指南：[台灣正體中文](testing-zh-TW.md) · [English](testing-en.md) · [日本語](testing-ja.md)。Release 預設使用台灣正體中文，並附上 `TESTING.md`、`TESTING.en.md`、`TESTING.ja.md`。以下為維護者的發佈說明。
+
+The `Publish Android PoC` GitHub Actions workflow builds and tests the tagged source, then publishes **the same application APK** to a GitHub prerelease and GitHub Packages (Maven). It also uploads the instrumentation APK, three complete testing guides and SHA-256 checksums to the Release and a 30-day Actions artifact. Release assets and Packages do not use that artifact expiration.
 
 ## Publish
 
@@ -12,15 +14,9 @@ If publication partially fails, inspect both the exact Release and package versi
 
 ## Download and test
 
-1. Open the repository's **Releases**, select the newest Android Phase 0 prerelease and download `suizai-<version>.apk`, `SHA256SUMS` and `TESTING.md`. Sign into an account with access to this private repository.
-2. Verify the checksum, e.g. `shasum -a 256 suizai-<version>.apk`, against `SHA256SUMS`.
-3. Install on an Android 8.0+ test device. This is debug-signed; allow installation from the chosen browser/file app when prompted. Each CI build has an ephemeral debug key, so replacing an older build may require uninstalling it, deleting its local mock files. Preserve anything needed first; use disposable fixtures only.
-4. Follow the [Android runbook](android-phase0-runbook.md). Record model/OEM, exact OS build, APK version/commit/checksum, SAF client version, steps and pass/fail evidence in [#1](https://github.com/KonohaDerek/suizai/issues/1). Keep #1 open until all required device checks pass.
-5. If running the automated device suite, install the matching `androidTest.apk` as well, then run `adb shell am instrument -w tw.suizai.app.test/androidx.test.runner.AndroidJUnitRunner`. This is optional for a manual tester.
+Use the complete guide in your preferred language: [台灣正體中文](testing-zh-TW.md), [English](testing-en.md), or [日本語](testing-ja.md). The same guides are attached to each Release as `TESTING.md`, `TESTING.en.md`, and `TESTING.ja.md`; the default Release description is Taiwan Traditional Chinese.
 
-Earlier PoC builds used path-based document IDs. Those persisted URI grants are not migrated to this UUID-based prototype; reselect files through the system picker. The [external-storage runbook](android-external-storage-runbook.md) covers the additional #3 test entry point; its app-local self-check does not prove BOOK☆WALKER access.
-
-The app uses local mock files. It does not implement remote storage, OAuth, cache encryption, root mounting or interrupted-upload recovery. BOOK☆WALKER results belong to #2/#3 and require a dedicated account and replaceable content. A passing build is not evidence that BOOK☆WALKER can select SUIZAI.
+The app defaults to zh-TW on first launch and stores the selected language. Switching language does not rewrite existing files or document IDs. The guides include installation/signing limitations, system-picker discovery, app-specific storage, BOOK☆WALKER checks, optional instrumentation and a report template.
 
 ## Packages
 

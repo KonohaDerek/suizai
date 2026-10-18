@@ -1,23 +1,9 @@
-# Android app-specific external storage probe
+# Android App 專用儲存空間驗證
 
-This Phase 0 probe tests whether BOOK☆WALKER can discover or use an ordinary app-specific external-files directory. It uses normal app permissions only. It does not create a removable volume, bypass Android storage isolation, or test real DRM files.
+完整操作、語言測試及回報格式：[台灣正體中文](testing-zh-TW.md) · [English](testing-en.md) · [日本語](testing-ja.md)。
 
-## Prepare
+點選「建立測試資料夾」，App 會在每個可寫入的專用儲存位置建立新的 `suizai-external-probe/run-…/SUIZAI-test.txt`。新檔使用建立當時的語言；重複執行或切換語言不會覆寫先前的資料。
 
-1. Install the debug APK on a test device and open **SUIZAI 隨載**.
-2. Tap **Create test folders**. For each `getExternalFilesDirs(null)` location, the screen shows its Android availability state and path. A mounted location gets a fresh `suizai-external-probe/run-…` directory with `SUIZAI-test.txt`.
-3. Long-press the displayed text to copy the test-folder path. The app checks create, write, reopen, rename, and delete of a temporary file in its own folder, then leaves the disposable text file for inspection. A successful app file check says nothing about BOOK☆WALKER access.
-4. Repeated taps create new run folders. Existing folders and any files you add to them are left untouched. Remove old test folders manually only after recording results.
+畫面會顯示儲存狀態、路徑，以及 App 本身的建立、寫入、重新命名、重新讀取與刪除檢查結果。這不代表 BOOK☆WALKER 能存取同一個目錄，也不會建立新的 SD 卡或繞過 Android 的 App 隔離。
 
-## Check BOOK☆WALKER manually
-
-1. In BOOK☆WALKER, inspect the available storage locations and record their displayed names and paths, if shown.
-2. Check whether the new SUIZAI test-folder path is listed or can be selected. Record the exact screen and error if it cannot.
-3. Only if BOOK☆WALKER offers a way to open that folder, try reading `SUIZAI-test.txt` and creating, renaming, reopening, and deleting a separate disposable text file there. Do not move or copy real downloaded books or DRM content for this test.
-4. Repeat on each reported location and record the Android version, device model, volume state, and BOOK☆WALKER version.
-
-| Location / path | Listed by BOOK☆WALKER? | Read | Create/write/reopen/rename/delete | Evidence |
-|---|---|---|---|---|
-| Pending | Pending | Pending | Pending | |
-
-On recent Android versions, `Android/data/<app package>/files` is app-specific space and other apps may be blocked from browsing it. A negative result is useful evidence for the storage integration decision. This runbook records a manual compatibility check; no BOOK☆WALKER result has been observed yet.
+在 BOOK☆WALKER 記錄實際列出的根目錄／可選取的子目錄及操作。如果沒有選擇測試資料夾或操作文字檔的功能，請記錄畫面限制，不要搬移既有書籍或 DRM 內容。結果記錄到 #3，系統選擇器的結果另外記錄到 #1。

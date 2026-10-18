@@ -63,31 +63,24 @@ jobs:
           cp app/build/outputs/apk/debug/app-debug.apk "dist/suizai-${VERSION}.apk"
           cp app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk "dist/suizai-${VERSION}-androidTest.apk"
           (cd dist && sha256sum *.apk > SHA256SUMS)
-          cat > dist/TESTING.md <<EOF
-          # SUIZAI Android Phase 0 test build
-
-          Version: ${VERSION}
-          Commit: ${GITHUB_SHA}
-          CI: https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
-
-          Install suizai-${VERSION}.apk on an Android 8.0+ test device.
-          The androidTest APK is optional and only for the instrumentation suite.
-          This is a debug-signed local mock, not a production release. Use disposable,
-          non-sensitive files. There are no remote accounts, cloud providers or root helpers.
-          Each CI build uses an ephemeral debug key; upgrading an older build can require
-          uninstalling it, which deletes its mock data. Preserve needed fixtures first.
-          Earlier PoC path-based document grants are not migrated: reselect files in the picker.
-
-          Device/BOOK☆WALKER compatibility, reboot and lifecycle behavior are pending.
-          Follow docs/android-phase0-runbook.md and docs/apk-distribution.md at this tag:
-          https://github.com/${GITHUB_REPOSITORY}/tree/${TAG}/docs
-          Report model, OS build, this version/checksum, exact steps and results in issue #1.
-          The app-specific external-storage probe and its runbook support issue #3.
-          BOOK☆WALKER tests additionally require a dedicated account and replaceable content.
-
-          Packages coordinate: tw.suizai:suizai-android-poc:${VERSION}:apk
-          The package contains the same application APK as this Release.
-          EOF
+          for locale in zh-TW en ja; do
+            case "$locale" in
+              zh-TW) guide=TESTING.md; version_label=版本; commit_label=來源版本 ;;
+              en) guide=TESTING.en.md; version_label=Version; commit_label=Commit ;;
+              ja) guide=TESTING.ja.md; version_label=バージョン; commit_label=コミット ;;
+            esac
+            {
+              echo "${version_label}: ${VERSION}"
+              echo "${commit_label}: ${GITHUB_SHA}"
+              echo "CI: https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+              echo ""
+              echo "[台灣正體中文](https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/TESTING.md) · [English](https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/TESTING.en.md) · [日本語](https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/TESTING.ja.md)"
+              echo ""
+              cat "docs/testing-${locale}.md"
+              echo ""
+              echo "Packages: tw.suizai:suizai-android-poc:${VERSION}:apk"
+            } > "dist/${guide}"
+          done
 
       - uses: actions/upload-artifact@v4
         with:
@@ -119,12 +112,12 @@ jobs:
           TAG: ${{ github.ref_name }}
         run: |
           gh release create "$TAG" dist/* --verify-tag --prerelease \
-            --title "Android Phase 0 ${VERSION}" --notes-file dist/TESTING.md
+            --title "Android 三語測試版 ${VERSION}" --notes-file dist/TESTING.md
           {
-            echo "## Android test handoff"
-            echo "[Download APK and checklist](https://github.com/${GITHUB_REPOSITORY}/releases/tag/${TAG})"
+            echo "## Android 實機測試"
+            echo "[下載 APK 與三語測試指南](https://github.com/${GITHUB_REPOSITORY}/releases/tag/${TAG})"
             echo ""
             echo "Packages: tw.suizai:suizai-android-poc:${VERSION}:apk"
             echo ""
-            echo "Device validation is pending; this is not a production release."
+            echo "台灣正體中文為預設語言，另提供 English 與日本語。實機驗證仍待回報。"
           } >> "$GITHUB_STEP_SUMMARY"
