@@ -2,12 +2,15 @@
 
 from pathlib import Path
 import re
+import shlex
 import subprocess
 import time
 import xml.etree.ElementTree as ET
 
 
 def adb(*args):
+    if args[0] == "shell":
+        args = ("shell", shlex.join(args[1:]))
     return subprocess.check_output(["adb", *args], timeout=30)
 
 
