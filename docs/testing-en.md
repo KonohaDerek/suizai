@@ -11,7 +11,7 @@
 ## System file picker (issue #1)
 
 1. Tap **Open system file picker**, then open the upper-left menu to expand the **storage locations**. The Recents screen alone does not list every storage provider.
-2. Select **SUIZAI 隨載** and check that `Books/README.txt` is visible and readable.
+2. Select **SUIZAI** (shown as **SUIZAI 隨載** in Chinese/Japanese) and check that `Books/README.txt` is visible and readable.
 3. In a text editor that supports the system picker, create a disposable text file in SUIZAI; write, close, reopen, rename and delete it.
 4. Reboot the phone and confirm that SUIZAI and retained test files remain accessible.
 5. If SUIZAI is still missing after opening the location list, record “not listed in system picker” with the full location list and device details. The app's self-check does not prove this check passed.

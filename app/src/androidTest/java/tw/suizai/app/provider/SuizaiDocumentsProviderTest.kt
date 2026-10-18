@@ -72,6 +72,8 @@ class SuizaiDocumentsProviderTest {
         val observer = object : ContentObserver(null) {
             override fun onChange(selfChange: Boolean, uri: Uri?) { changed.countDown() }
         }
+        // Always make the observed switch a change, including on Japanese test devices.
+        AppLanguage.select(context, "zh-TW")
         resolver.registerContentObserver(rootsUri, false, observer)
         try {
             AppLanguage.select(context, "ja")

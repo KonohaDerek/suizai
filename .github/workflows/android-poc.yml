@@ -11,6 +11,7 @@ on:
       - "settings.gradle.kts"
       - "gradle.properties"
       - ".github/workflows/android-poc.yml"
+      - ".github/scripts/**"
   pull_request:
     branches:
       - main
@@ -20,6 +21,7 @@ on:
       - "settings.gradle.kts"
       - "gradle.properties"
       - ".github/workflows/android-poc.yml"
+      - ".github/scripts/**"
   workflow_dispatch:
 
 permissions:
@@ -107,4 +109,15 @@ jobs:
           disk-size: 2048M
           emulator-boot-timeout: 300
           disable-animations: true
-          script: gradle --no-daemon connectedDebugAndroidTest
+          script: |
+            gradle --no-daemon connectedDebugAndroidTest
+            python3 .github/scripts/verify_system_picker.py
+
+      - name: Upload system-picker evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: system-picker-api-33
+          path: build/picker-verification/
+          if-no-files-found: warn
+          retention-days: 14
