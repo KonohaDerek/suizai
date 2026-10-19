@@ -34,6 +34,8 @@ Phase 0 specifications and prototype work are tracked in [GitHub Projects](https
 - [Product vision](docs/product-vision.md)
 - [Market and competition](docs/market-analysis.md)
 - [System architecture](docs/architecture.md)
+- [Rust/native boundary experiment](docs/decisions/0001-rust-native-boundary.md)
+- [iOS Phase 0 runbook](docs/ios-phase0-runbook.md)
 - [Storage provider contract](docs/storage-provider-contract.md)
 - [Android compatibility PoC](docs/android-poc.md)
 - [Android Phase 0 runbook](docs/android-phase0-runbook.md)
