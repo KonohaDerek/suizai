@@ -7,6 +7,7 @@ import android.os.CancellationSignal
 import android.os.Handler
 import android.os.Looper
 import android.os.ParcelFileDescriptor
+import android.os.OperationCanceledException
 import android.provider.DocumentsContract
 import android.provider.DocumentsContract.Document
 import android.provider.DocumentsContract.Root
@@ -17,6 +18,11 @@ import tw.suizai.app.AppLanguage
 import java.io.File
 import java.io.FileNotFoundException
 import java.io.IOException
+import java.util.concurrent.ArrayBlockingQueue
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.ThreadPoolExecutor
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
 import java.util.UUID
 
 class SuizaiDocumentsProvider : DocumentsProvider() {
@@ -55,7 +61,10 @@ class SuizaiDocumentsProvider : DocumentsProvider() {
     @Synchronized
     override fun queryDocument(documentId: String, projection: Array<out String>?): Cursor =
         MatrixCursor(projection.orDefault(DOCUMENT_PROJECTION)).apply {
-            includeDocument(this, resolveFile(documentId))
+            if (documentId == RustFixtureDocument.ID) {
+                requireRustFixtureEnabled()
+                includeRustFixture(this)
+            } else includeDocument(this, resolveFile(documentId))
             setNotificationUri(
                 requireNotNull(context).contentResolver,
                 DocumentsContract.buildDocumentUri(authority(), documentId)
@@ -73,6 +82,9 @@ class SuizaiDocumentsProvider : DocumentsProvider() {
         parent.listFiles().orEmpty()
             .sortedWith(compareBy<File>({ !it.isDirectory }, { it.name.lowercase() }))
             .forEach { includeDocument(this, it) }
+        if (parentDocumentId == ROOT_ID && RustFixtureDocument.enabled(requireNotNull(context))) {
+            includeRustFixture(this)
+        }
         setNotificationUri(
             requireNotNull(context).contentResolver,
             DocumentsContract.buildChildDocumentsUri(authority(), parentDocumentId)
@@ -81,6 +93,9 @@ class SuizaiDocumentsProvider : DocumentsProvider() {
 
     @Synchronized
     override fun isChildDocument(parentDocumentId: String, documentId: String): Boolean {
+        if (documentId == RustFixtureDocument.ID) {
+            return parentDocumentId == ROOT_ID && RustFixtureDocument.enabled(requireNotNull(context))
+        }
         val parent = try {
             resolveFile(parentDocumentId).canonicalFile
         } catch (_: FileNotFoundException) {
@@ -95,24 +110,99 @@ class SuizaiDocumentsProvider : DocumentsProvider() {
         return child.path.startsWith(parent.path + File.separator)
     }
 
-    @Synchronized
     override fun openDocument(
         documentId: String,
         mode: String,
         signal: CancellationSignal?
     ): ParcelFileDescriptor {
         signal?.throwIfCanceled()
-        val file = resolveFile(documentId)
-        if (file.isDirectory) throw FileNotFoundException("Cannot open a directory")
-        val parentDocumentId = idForFile(requireNotNull(file.parentFile))
-        val writes = 'w' in mode || 'a' in mode
-        return ParcelFileDescriptor.open(
-            file,
-            ParcelFileDescriptor.parseMode(mode),
-            Handler(Looper.getMainLooper())
-        ) { _ ->
-            if (writes) notifyDocumentAndParent(documentId, parentDocumentId)
+        if (documentId == RustFixtureDocument.ID) return openRustFixture(mode, signal)
+        return synchronized(this) {
+            val file = resolveFile(documentId)
+            if (file.isDirectory) throw FileNotFoundException("Cannot open a directory")
+            val parentDocumentId = idForFile(requireNotNull(file.parentFile))
+            val writes = 'w' in mode || 'a' in mode
+            ParcelFileDescriptor.open(
+                file,
+                ParcelFileDescriptor.parseMode(mode),
+                Handler(Looper.getMainLooper())
+            ) { _ ->
+                if (writes) notifyDocumentAndParent(documentId, parentDocumentId)
+            }
         }
+    }
+
+    private fun requireRustFixtureEnabled() {
+        if (!RustFixtureDocument.enabled(requireNotNull(context))) {
+            throw FileNotFoundException("Rust fixture is disabled")
+        }
+    }
+
+    private fun includeRustFixture(cursor: MatrixCursor) {
+        addProjectedRow(cursor, listOf(
+            Document.COLUMN_DOCUMENT_ID to RustFixtureDocument.ID,
+            Document.COLUMN_DISPLAY_NAME to AppLanguage.localized(requireNotNull(context)).getString(R.string.rust_document_name),
+            Document.COLUMN_MIME_TYPE to "text/plain",
+            Document.COLUMN_FLAGS to 0,
+            Document.COLUMN_SIZE to null,
+            Document.COLUMN_LAST_MODIFIED to null
+        ))
+    }
+
+    private fun openRustFixture(mode: String, signal: CancellationSignal?): ParcelFileDescriptor {
+        requireRustFixtureEnabled()
+        if (mode != "r") throw FileNotFoundException("Rust fixture is read-only")
+        signal?.throwIfCanceled()
+        val handle = RustFixture.nativeOpen(AppLanguage.selected(requireNotNull(context)), 500)
+        val pipe = try {
+            ParcelFileDescriptor.createReliablePipe()
+        } catch (error: IOException) {
+            RustFixture.nativeRelease(handle)
+            throw error
+        }
+        val reader = pipe[0]
+        val writer = pipe[1]
+        val done = CountDownLatch(1)
+        val failure = AtomicReference<Exception?>()
+        try {
+            signal?.setOnCancelListener { RustFixture.nativeCancel(handle) }
+            signal?.throwIfCanceled()
+            rustReads.execute {
+                try {
+                    val bytes = RustFixture.nativeRead(handle)
+                    signal?.throwIfCanceled()
+                    ParcelFileDescriptor.AutoCloseOutputStream(writer).use { it.write(bytes) }
+                } catch (_: OperationCanceledException) {
+                    writer.closeWithError("Rust fixture canceled")
+                } catch (error: Exception) {
+                    failure.set(error)
+                    writer.closeWithError("Rust fixture read failed")
+                } finally {
+                    RustFixture.nativeRelease(handle)
+                    signal?.setOnCancelListener(null)
+                    try { writer.close() } catch (_: IOException) { }
+                    done.countDown()
+                }
+            }
+        } catch (error: Exception) {
+            signal?.setOnCancelListener(null)
+            RustFixture.nativeRelease(handle)
+            reader.close()
+            writer.close()
+            throw error
+        }
+        try {
+            if (!done.await(3, TimeUnit.SECONDS)) {
+                RustFixture.nativeCancel(handle)
+                throw IOException("Rust fixture timed out")
+            }
+            signal?.throwIfCanceled()
+            failure.get()?.let { throw IOException("Rust fixture read failed", it) }
+        } catch (error: Exception) {
+            reader.close()
+            throw error
+        }
+        return reader
     }
 
     @Synchronized
@@ -332,6 +422,9 @@ class SuizaiDocumentsProvider : DocumentsProvider() {
     private companion object {
         const val ROOT_ID = "root"
         const val ROOT_DIRECTORY_NAME = "suizai-root"
+        val rustReads = ThreadPoolExecutor(2, 2, 0, TimeUnit.MILLISECONDS, ArrayBlockingQueue(4)).apply {
+            rejectedExecutionHandler = ThreadPoolExecutor.AbortPolicy()
+        }
 
         val ROOT_PROJECTION = arrayOf(
             Root.COLUMN_ROOT_ID,

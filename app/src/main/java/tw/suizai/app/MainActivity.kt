@@ -5,6 +5,11 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.os.Environment
+import android.os.CancellationSignal
+import android.os.OperationCanceledException
+import android.os.Handler
+import android.os.Looper
+import android.provider.DocumentsContract
 import android.provider.Settings
 import android.view.ViewGroup
 import android.widget.Button
@@ -13,6 +18,8 @@ import android.widget.ScrollView
 import android.widget.Spinner
 import android.widget.ArrayAdapter
 import android.widget.TextView
+import tw.suizai.app.provider.RustFixtureDocument
+import java.io.FileInputStream
 
 class MainActivity : Activity() {
     override fun attachBaseContext(newBase: Context) {
@@ -77,6 +84,68 @@ class MainActivity : Activity() {
             text = getString(R.string.open_storage_settings)
             setOnClickListener { startActivity(Intent(Settings.ACTION_INTERNAL_STORAGE_SETTINGS)) }
         }, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+
+        layout.addView(TextView(this).apply {
+            text = getString(R.string.rust_test_title)
+            textSize = 22f
+            setTextColor(0xFF12372F.toInt())
+            setPadding(0, (24 * density).toInt(), 0, (8 * density).toInt())
+        })
+        layout.addView(TextView(this).apply { text = getString(R.string.rust_test_description) })
+        val rustResult = TextView(this).apply { text = getString(R.string.rust_test_pending) }
+        val enableRust = Button(this)
+        val readRust = Button(this).apply { text = getString(R.string.rust_read) }
+        val testCancel = Button(this).apply { text = getString(R.string.rust_test_cancel) }
+        val cancelRust = Button(this).apply { text = getString(R.string.rust_cancel) }
+        var activeRead: CancellationSignal? = null
+        fun refreshRustButtons() {
+            val enabled = RustFixtureDocument.enabled(this)
+            enableRust.text = getString(if (enabled) R.string.rust_disable else R.string.rust_enable)
+            enableRust.isEnabled = activeRead == null
+            readRust.isEnabled = enabled && activeRead == null
+            testCancel.isEnabled = enabled && activeRead == null
+            cancelRust.isEnabled = activeRead != null
+        }
+        enableRust.setOnClickListener {
+            RustFixtureDocument.setEnabled(this, !RustFixtureDocument.enabled(this))
+            refreshRustButtons()
+        }
+        fun startRustRead(cancelAfterDelay: Boolean) {
+            val signal = CancellationSignal()
+            activeRead = signal
+            rustResult.text = getString(R.string.rust_reading)
+            languageSelector.isEnabled = false
+            refreshRustButtons()
+            if (cancelAfterDelay) Handler(Looper.getMainLooper()).postDelayed({ signal.cancel() }, 50)
+            Thread {
+                val uri = DocumentsContract.buildDocumentUri("$packageName.documents", RustFixtureDocument.ID)
+                val result = try {
+                    val content = contentResolver.openFileDescriptor(uri, "r", signal)!!.use { descriptor ->
+                        val text = FileInputStream(descriptor.fileDescriptor).bufferedReader(Charsets.UTF_8).readText()
+                        descriptor.checkError()
+                        text
+                    }
+                    getString(R.string.rust_success, content.trimEnd())
+                } catch (_: OperationCanceledException) {
+                    getString(R.string.rust_canceled)
+                } catch (_: Exception) { getString(R.string.rust_failed) }
+                runOnUiThread {
+                    rustResult.text = result
+                    activeRead = null
+                    languageSelector.isEnabled = true
+                    refreshRustButtons()
+                }
+            }.start()
+        }
+        readRust.setOnClickListener { startRustRead(false) }
+        testCancel.setOnClickListener { startRustRead(true) }
+        cancelRust.setOnClickListener { activeRead?.cancel() }
+        refreshRustButtons()
+        layout.addView(enableRust, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        layout.addView(readRust, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        layout.addView(testCancel, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        layout.addView(cancelRust, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        layout.addView(rustResult, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
 
         layout.addView(TextView(this).apply {
             text = getString(R.string.external_probe_title)
