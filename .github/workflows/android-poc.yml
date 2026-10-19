@@ -130,19 +130,16 @@ jobs:
           disk-size: 2048M
           emulator-boot-timeout: 300
           disable-animations: true
-          script: |
-            start=$(date +%s)
-            gradle --no-daemon connectedDebugAndroidTest
-            echo "SUIZAI_METRIC workload=gradle_connected_android_test elapsed_s=$(($(date +%s)-start))"
-            mkdir -p build/picker-verification
-            adb logcat -d -s 'SUIZAI_METRIC:I' '*:S' > build/picker-verification/rust-read-measurements.log
-            python3 .github/scripts/verify_system_picker.py
+          script: bash .github/scripts/verify_android_provider.sh
 
       - name: Upload system-picker evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: system-picker-api-33
-          path: build/picker-verification/
+          path: |
+            build/picker-verification/
+            app/build/reports/androidTests/connected/
+            app/build/outputs/androidTest-results/connected/
           if-no-files-found: warn
           retention-days: 14
