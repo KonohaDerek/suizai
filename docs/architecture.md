@@ -2,14 +2,14 @@
 
 ## Proposed stack
 
-- Shared storage core: Rust
+- Shared storage core: Rust candidate, pending the bounded Phase 0 experiment and #10 decision
 - Android app and service: Kotlin + Jetpack Compose
 - iOS app and extension: Swift + SwiftUI
 - Metadata: SQLite
 - Secrets: Android Keystore / iOS Keychain
 - Platform integration: DocumentsProvider / File Provider Extension
 
-Kotlin Multiplatform may be evaluated for non-filesystem application logic, but the system integrations remain native. Rust is proposed for provider I/O, cache coordination and reusable filesystem semantics.
+Kotlin Multiplatform may be evaluated for non-filesystem application logic, but the system integrations remain native. Rust is a candidate for reusable data operations. The [Phase 0 boundary decision](decisions/0001-rust-native-boundary.md) keeps OS lifecycle, permissions, file descriptors, temporary files and protected-data access native. Production provider I/O, cache ownership and durable write-back remain undecided until recovery and device evidence support the boundary; the diagram below is the proposed target, not implemented functionality.
 
 ## Component boundaries
 

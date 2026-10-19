@@ -1,0 +1,61 @@
+name: iOS Phase 0
+
+on:
+  push:
+    paths: ["ios/**", "core/**", ".github/workflows/ios-phase0.yml"]
+  pull_request:
+    paths: ["ios/**", "core/**", ".github/workflows/ios-phase0.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: macos-15
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install 1.85.1 --profile minimal
+      - name: Test Rust ABI and build host library
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/suizai-ios-evidence"
+          sh core/test-ffi.sh 2>&1 | tee "$RUNNER_TEMP/suizai-ios-evidence/rust-tests.log"
+          ios/build-rust.sh host 2>&1 | tee "$RUNNER_TEMP/suizai-ios-evidence/rust-host-build.log"
+      - name: Test native mock store and bridge wrapper
+        shell: bash
+        run: |
+          set -euo pipefail
+          SUIZAI_RUST_LIB_DIR="$PWD/ios/.rust/host" swift test --package-path ios 2>&1 | tee "$RUNNER_TEMP/suizai-ios-evidence/swift-tests.log"
+      - name: Build simulator and device Rust libraries
+        shell: bash
+        run: |
+          set -euo pipefail
+          ios/build-rust.sh simulator 2>&1 | tee "$RUNNER_TEMP/suizai-ios-evidence/rust-simulator-build.log"
+          ios/build-rust.sh device 2>&1 | tee "$RUNNER_TEMP/suizai-ios-evidence/rust-device-build.log"
+      - name: Build unsigned app and embedded extension
+        shell: bash
+        run: |
+          set -euo pipefail
+          evidence="$RUNNER_TEMP/suizai-ios-evidence"
+          for platform in iphonesimulator iphoneos; do
+            start=$(date +%s)
+            xcodebuild -project ios/SuizaiPhase0.xcodeproj -target SuizaiPhase0 \
+              -sdk "$platform" -configuration Debug \
+              ARCHS=arm64 ONLY_ACTIVE_ARCH=NO CODE_SIGNING_ALLOWED=NO \
+              SYMROOT="$RUNNER_TEMP/suizai-ios-products" build 2>&1 | tee "$evidence/xcodebuild-$platform.log"
+            elapsed=$(( $(date +%s) - start ))
+            product="$RUNNER_TEMP/suizai-ios-products/Debug-$platform/SuizaiPhase0.app"
+            extension="$product/PlugIns/MockFileProvider.appex"
+            test -d "$product" && test -d "$extension"
+            echo "SUIZAI_METRIC platform=$platform unsigned_build_seconds=$elapsed rust_staticlib_bytes=$(stat -f %z "ios/.rust/$platform/libsuizai_core.a") app_kib=$(du -sk "$product" | awk '{print $1}') extension_kib=$(du -sk "$extension" | awk '{print $1}')" | tee -a "$evidence/measurements.txt"
+          done
+      - name: Save measurements and test logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-phase0-evidence
+          path: ${{ runner.temp }}/suizai-ios-evidence/
+          if-no-files-found: warn

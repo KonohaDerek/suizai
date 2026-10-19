@@ -1,0 +1,145 @@
+name: Android PoC CI
+
+on:
+  push:
+    branches:
+      - main
+      - "codex/**"
+    paths:
+      - "app/**"
+      - "core/**"
+      - "build.gradle.kts"
+      - "settings.gradle.kts"
+      - "gradle.properties"
+      - ".github/workflows/android-poc.yml"
+      - ".github/scripts/**"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "app/**"
+      - "core/**"
+      - "build.gradle.kts"
+      - "settings.gradle.kts"
+      - "gradle.properties"
+      - ".github/workflows/android-poc.yml"
+      - ".github/scripts/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  android:
+    name: Unit tests and APKs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: platform-tools
+
+      - name: Install project SDK
+        run: sdkmanager --install "platforms;android-36" "build-tools;36.0.0" "ndk;27.2.12479018" "cmake;3.22.1"
+
+      - name: Install pinned Rust Android targets
+        run: |
+          rustup toolchain install 1.85.1 --profile minimal
+          rustup target add --toolchain 1.85.1 aarch64-linux-android x86_64-linux-android
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: "9.6.0"
+          cache-provider: basic
+
+      - name: Run unit tests and assemble APKs
+        run: |
+          start=$(date +%s)
+          gradle --no-daemon testDebugUnitTest assembleDebug assembleDebugAndroidTest
+          echo "SUIZAI_METRIC workload=gradle_test_and_assemble elapsed_s=$(($(date +%s)-start))"
+          stat -c 'SUIZAI_METRIC artifact=%n bytes=%s' app/build/outputs/apk/debug/app-debug.apk app/build/rust/arm64-v8a/libsuizai_core.a app/build/rust/x86_64/libsuizai_core.a
+          find app/build/intermediates/merged_native_libs -name libsuizai_bridge.so -exec stat -c 'SUIZAI_METRIC artifact=%n bytes=%s' {} \;
+          unzip -Z1 app/build/outputs/apk/debug/app-debug.apk | grep -qx 'lib/arm64-v8a/libsuizai_bridge.so'
+          unzip -Z1 app/build/outputs/apk/debug/app-debug.apk | grep -qx 'lib/x86_64/libsuizai_bridge.so'
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: suizai-android-poc
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 7
+
+  provider-contract:
+    name: DocumentsProvider contract (API 33)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+
+      - name: Install project SDK
+        run: sdkmanager --install "platforms;android-36" "build-tools;36.0.0" "ndk;27.2.12479018" "cmake;3.22.1"
+
+      - name: Install pinned Rust Android targets
+        run: |
+          rustup toolchain install 1.85.1 --profile minimal
+          rustup target add --toolchain 1.85.1 aarch64-linux-android x86_64-linux-android
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: "9.6.0"
+          cache-provider: basic
+
+      - name: Enable KVM access
+        run: sudo chmod a+rw /dev/kvm
+
+      - name: Free unused runner native toolchains
+        run: |
+          find "${ANDROID_HOME:?}/ndk" -mindepth 1 -maxdepth 1 -type d ! -name 27.2.12479018 -exec rm -rf {} +
+          find "${ANDROID_HOME:?}/cmake" -mindepth 1 -maxdepth 1 -type d ! -name 3.22.1 -exec rm -rf {} +
+
+      - name: Run provider contract on emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          target: google_apis
+          arch: x86_64
+          disk-size: 2048M
+          emulator-boot-timeout: 300
+          disable-animations: true
+          script: bash .github/scripts/verify_android_provider.sh
+
+      - name: Upload system-picker evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: system-picker-api-33
+          path: |
+            build/picker-verification/
+            app/build/reports/androidTests/connected/
+            app/build/outputs/androidTest-results/connected/
+          if-no-files-found: warn
+          retention-days: 14

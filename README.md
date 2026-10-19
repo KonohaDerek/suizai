@@ -34,13 +34,26 @@ Phase 0 specifications and prototype work are tracked in [GitHub Projects](https
 - [Product vision](docs/product-vision.md)
 - [Market and competition](docs/market-analysis.md)
 - [System architecture](docs/architecture.md)
+- [Rust/native boundary experiment](docs/decisions/0001-rust-native-boundary.md)
+- [iOS Phase 0 runbook](docs/ios-phase0-runbook.md)
 - [Storage provider contract](docs/storage-provider-contract.md)
 - [Android compatibility PoC](docs/android-poc.md)
+- [Android Phase 0 runbook](docs/android-phase0-runbook.md)
 - [iOS File Provider plan](docs/ios-file-provider.md)
 - [Security model](docs/security-model.md)
 - [Roadmap](docs/roadmap.md)
 - [Platform support and validation matrix](docs/platform-support.md)
 - [Issue delivery workflow and dependencies](docs/issue-workflow.md)
+
+## Android Phase 0 實機測試
+
+測試版首次啟動預設台灣正體中文，可切換 English 或日本語並保留選擇。App 操作說明、新建立的測試檔與驗證指南均提供三語；既有檔案保留原文。
+
+- [台灣正體中文測試指南](docs/testing-zh-TW.md)
+- [English testing guide](docs/testing-en.md)
+- [日本語テストガイド](docs/testing-ja.md)
+
+從 [Releases](https://github.com/KonohaDerek/suizai/releases) 下載測試 APK 與指南，或依 [建置說明](docs/android-phase0-runbook.md) 自行建置。請分別記錄系統檔案選擇器與 BOOK☆WALKER 的驗證結果。
 
 ## Working name
 
