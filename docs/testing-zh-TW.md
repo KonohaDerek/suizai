@@ -32,6 +32,15 @@
 3. 若畫面提供選擇測試資料夾或操作文字檔的功能，才測試讀取 `SUIZAI-test.txt`，並對另一個可丟棄文字檔進行建立、寫入、重新開啟、重新命名及刪除。
 4. 若無法選取或沒有這項功能，記錄「未列出／無此操作」及實際畫面即可。不要為測試搬移既有下載書籍或複製 DRM 內容。
 
+## Rust 共用核心測試（issue #6）
+
+1. 本版 APK 支援 `arm64-v8a` 實機與 `x86_64` 模擬器。Rust 測試文件預設關閉；先點「**開啟測試文件**」。原有 `Books` 與測試資料夾不會改寫。
+2. 點「**讀取 Rust 文件**」。App 會透過同一個 DocumentsProvider 非同步讀取合成文字，應顯示「SUIZAI 共用核心測試檔案」。切換 English／日本語後重試，應分別顯示 `SUIZAI shared core test file`／`SUIZAI 共通コアのテストファイル`。
+3. 點「**測試取消**」。App 會自動在讀取期間提出取消，無須在短暫延遲內搶按按鈕。記錄成功取消或實際錯誤，再執行一般讀取，確認可以恢復。
+4. 也可在一般讀取期間點「**取消讀取**」。若讀取已完成，完成結果可以先於取消；請記錄當時顯示的結果。重開 App 後再讀一次，檢查是否仍正常。
+5. 系統選擇器若列出 SUIZAI，可另外讀取根目錄的 Rust 測試文件；它只能讀取。點「**關閉測試文件**」後，新的查詢應不再列出此文件，原有文件仍保留。
+6. 在 [#6](https://github.com/KonohaDerek/suizai/issues/6) 回報版本、裝置、語言、讀取／取消／再次讀取與重開 App 結果。App 內讀取成功只驗證本 App 到 provider 的橋接，不能代替系統選擇器、其他 App 或 BOOK☆WALKER 驗證。
+
 ## 回報格式
 
 在 [#1](https://github.com/KonohaDerek/suizai/issues/1) 回報系統選擇器結果；在 [#3](https://github.com/KonohaDerek/suizai/issues/3) 回報 App 專用目錄／BOOK☆WALKER 結果。

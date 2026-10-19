@@ -32,6 +32,15 @@ Earlier PoC builds used path-based document IDs. Their saved file grants are not
 3. Only if the app offers a way to select the test folder or operate on text files, try reading `SUIZAI-test.txt` and creating, writing, reopening, renaming and deleting a separate disposable text file.
 4. If the location or operation is unavailable, record “not listed / operation unavailable” and the screen shown. Do not relocate existing downloaded books or copy DRM content for this test.
 
+## Shared Rust core test (issue #6)
+
+1. This APK supports `arm64-v8a` devices and `x86_64` emulators. The Rust test document starts disabled; tap **Enable test document**. Existing `Books` and test folders are preserved.
+2. Tap **Read Rust document**. The app asynchronously reads synthetic text through the same DocumentsProvider. Expect `SUIZAI shared core test file` in English, `SUIZAI 共用核心測試檔案` in Taiwan Traditional Chinese, and `SUIZAI 共通コアのテストファイル` in Japanese. Repeat in all three languages.
+3. Tap **Test cancellation**. The app requests cancellation automatically during the read, so you do not need to race the short delay. Record cancellation or the actual error, then perform a normal read to check recovery.
+4. You can also tap **Cancel read** during a normal read. Completion may win if the read has already finished; record the displayed outcome. Reopen the app and read again.
+5. If the system picker lists SUIZAI, also read the Rust test document at its root. It is read-only. After **Disable test document**, a fresh query should no longer list it; existing documents remain.
+6. Report version, device, language, read/cancel/read-again and app-reopen results in [#6](https://github.com/KonohaDerek/suizai/issues/6). An in-app read verifies this app's provider bridge; it does not establish discovery or access by the system picker, another app or BOOK☆WALKER.
+
 ## Report template
 
 Report system-picker results in [#1](https://github.com/KonohaDerek/suizai/issues/1); report app-specific directory/BOOK☆WALKER results in [#3](https://github.com/KonohaDerek/suizai/issues/3).
