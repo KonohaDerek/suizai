@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A00000000000000000000001 /* FixtureFetch.swift in App Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000003 /* FixtureFetch.swift */; };
+		A00000000000000000000002 /* FixtureFetch.swift in Extension Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000003 /* FixtureFetch.swift */; };
 		0DE311CAE3CC469619508401 /* MockStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DE5A4B6EA7D9B725F36F4F6 /* MockStore.swift */; };
 		216535415793C91BCCA2FB77 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 71CFDFC3AC01D3DF3B421E85 /* Foundation.framework */; };
 		2E56AFDB6C14F97D4B7D7A52 /* SuizaiApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 466AD6C2E7A977A11CFB5744 /* SuizaiApp.swift */; };
@@ -41,6 +43,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		A00000000000000000000003 /* FixtureFetch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FixtureFetch.swift; sourceTree = "<group>"; };
 		1DE5A4B6EA7D9B725F36F4F6 /* MockStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MockStore.swift; sourceTree = "<group>"; };
 		466AD6C2E7A977A11CFB5744 /* SuizaiApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SuizaiApp.swift; sourceTree = "<group>"; };
 		478447AEFCFEF6D602CD2169 /* Provider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Provider.swift; sourceTree = "<group>"; };
@@ -127,6 +130,7 @@
 			isa = PBXGroup;
 			children = (
 				1DE5A4B6EA7D9B725F36F4F6 /* MockStore.swift */,
+				A00000000000000000000003 /* FixtureFetch.swift */,
 			);
 			name = Shared;
 			path = Sources/Shared;
@@ -222,6 +226,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				546A86E5C22994125CC18989 /* MockStore.swift in Sources */,
+				A00000000000000000000002 /* FixtureFetch.swift in Extension Sources */,
 				FD2A634E09B3E5D3FAEB107C /* Provider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -231,6 +236,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				0DE311CAE3CC469619508401 /* MockStore.swift in Sources */,
+				A00000000000000000000001 /* FixtureFetch.swift in App Sources */,
 				2E56AFDB6C14F97D4B7D7A52 /* SuizaiApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -263,6 +269,9 @@
 				SDKROOT = iphoneos;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
+				SWIFT_OBJC_BRIDGING_HEADER = Sources/Shared/BridgeHeader.h;
+				LIBRARY_SEARCH_PATHS = ("$(inherited)", "$(SRCROOT)/.rust/$(PLATFORM_NAME)");
+				OTHER_LDFLAGS = ("$(inherited)", "-lsuizai_core");
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VALIDATE_PRODUCT = YES;
 			};
@@ -401,6 +410,9 @@
 				SDKROOT = iphoneos;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
+				SWIFT_OBJC_BRIDGING_HEADER = Sources/Shared/BridgeHeader.h;
+				LIBRARY_SEARCH_PATHS = ("$(inherited)", "$(SRCROOT)/.rust/$(PLATFORM_NAME)");
+				OTHER_LDFLAGS = ("$(inherited)", "-lsuizai_core");
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
@@ -423,6 +435,9 @@
 				SDKROOT = iphoneos;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
+				SWIFT_OBJC_BRIDGING_HEADER = Sources/Shared/BridgeHeader.h;
+				LIBRARY_SEARCH_PATHS = ("$(inherited)", "$(SRCROOT)/.rust/$(PLATFORM_NAME)");
+				OTHER_LDFLAGS = ("$(inherited)", "-lsuizai_core");
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VALIDATE_PRODUCT = YES;
 			};
@@ -444,6 +459,9 @@
 				SDKROOT = iphoneos;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
+				SWIFT_OBJC_BRIDGING_HEADER = Sources/Shared/BridgeHeader.h;
+				LIBRARY_SEARCH_PATHS = ("$(inherited)", "$(SRCROOT)/.rust/$(PLATFORM_NAME)");
+				OTHER_LDFLAGS = ("$(inherited)", "-lsuizai_core");
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
