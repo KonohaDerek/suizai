@@ -1,5 +1,7 @@
 # Roadmap
 
+Track live progress in the [project board](https://github.com/users/KonohaDerek/projects/4), using the [issue workflow and dependencies](issue-workflow.md). Platform targets and unverified device lanes are recorded in the [support matrix](platform-support.md). Roadmap entries describe planned capabilities, not released features.
+
 ## Phase 0 — Feasibility
 
 - Minimal Android DocumentsProvider.
