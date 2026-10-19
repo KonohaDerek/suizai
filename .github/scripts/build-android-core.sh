@@ -2,7 +2,8 @@
 set -euo pipefail
 
 output_dir="${1:?Android Rust output directory required}"
-ndk="${ANDROID_NDK_HOME:-${ANDROID_HOME:?ANDROID_HOME required}/ndk/27.2.12479018}"
+# Hosted runners may export ANDROID_NDK_HOME for a different preinstalled revision.
+ndk="${ANDROID_HOME:?ANDROID_HOME required}/ndk/27.2.12479018"
 host_tag="linux-x86_64"
 if [[ "$(uname -s)" == Darwin ]]; then host_tag="darwin-x86_64"; fi
 toolchain="$ndk/toolchains/llvm/prebuilt/$host_tag/bin"
