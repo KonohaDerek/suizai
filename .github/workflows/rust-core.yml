@@ -29,6 +29,11 @@ jobs:
         run: |
           (cd core && cargo fmt --check)
           sh core/test-ffi.sh
+      - name: Install debugger on Linux
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y gdb
       - name: Check source-level ABI debugging on Linux
         if: runner.os == 'Linux'
         run: |
