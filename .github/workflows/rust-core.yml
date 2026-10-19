@@ -1,0 +1,31 @@
+name: Rust fixture core
+
+on:
+  push:
+    branches: [main, "codex/**"]
+    paths: ["core/**", ".github/workflows/rust-core.yml"]
+  pull_request:
+    branches: [main]
+    paths: ["core/**", ".github/workflows/rust-core.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  abi-contract:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-15]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install pinned Rust toolchain
+        run: |
+          toolchain=$(sed -n 's/^channel = "\([^"]*\)"/\1/p' core/rust-toolchain.toml)
+          rustup toolchain install "$toolchain" --profile minimal --component rustfmt
+      - name: Check formatting and Rust/C ownership contract
+        run: |
+          (cd core && cargo fmt --check)
+          sh core/test-ffi.sh

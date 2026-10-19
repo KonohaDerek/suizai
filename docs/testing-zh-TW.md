@@ -2,7 +2,7 @@
 
 ## 安裝與語言
 
-1. 登入具有此私人儲存庫存取權的 GitHub 帳號，在 Release 下載 `suizai-<版本>.apk`、`SHA256SUMS` 與本指南。一般手動測試不需要安裝 `androidTest.apk`。
+1. 在 Release 下載 `suizai-<版本>.apk`、`SHA256SUMS` 與本指南。一般手動測試不需要安裝 `androidTest.apk`。
 2. 以 `shasum -a 256 suizai-<版本>.apk` 核對 `SHA256SUMS`。Release 與 Packages 提供的是同一個 App APK。
 3. 在 Android 8.0 以上測試裝置安裝 APK；依系統提示允許這次安裝來源。每次 CI 使用不同的測試簽章，更新舊版可能需要先解除安裝，這會刪除 App 的本機資料與測試檔。先保存需要的測試紀錄。
 4. 開啟 App，首次啟動應顯示**台灣正體中文**。在「語言」切換 **English** 或 **日本語**，關閉再開啟 App，確認選擇有保留。這不會更改手機或 BOOK☆WALKER 的語言。
