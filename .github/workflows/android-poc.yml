@@ -116,6 +116,11 @@ jobs:
       - name: Enable KVM access
         run: sudo chmod a+rw /dev/kvm
 
+      - name: Free unused runner native toolchains
+        run: |
+          find "${ANDROID_HOME:?}/ndk" -mindepth 1 -maxdepth 1 -type d ! -name 27.2.12479018 -exec rm -rf {} +
+          find "${ANDROID_HOME:?}/cmake" -mindepth 1 -maxdepth 1 -type d ! -name 3.22.1 -exec rm -rf {} +
+
       - name: Run provider contract on emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
