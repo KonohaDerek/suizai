@@ -83,14 +83,14 @@ class RustFixtureProviderTest {
     @Test fun cancellationBeforeAndDuringReadReleasesHandle() {
         val canceled = CancellationSignal().apply { cancel() }
         assertThrows(OperationCanceledException::class.java) {
-            resolver.openFileDescriptor(fixture, "r", canceled)!!.close()
+            RustFixtureDocument.openCancelable(context, canceled).close()
         }
         val signal = CancellationSignal()
         val pool = Executors.newSingleThreadExecutor()
         try {
             val result = pool.submit<Boolean> {
                 try {
-                    resolver.openFileDescriptor(fixture, "r", signal)!!.let { descriptor ->
+                    RustFixtureDocument.openCancelable(context, signal).let { descriptor ->
                         ParcelFileDescriptor.AutoCloseInputStream(descriptor).use { it.readBytes() }
                     }
                     false

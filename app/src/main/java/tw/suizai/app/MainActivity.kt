@@ -10,7 +10,6 @@ import android.os.OperationCanceledException
 import android.os.Handler
 import android.os.Looper
 import android.os.ParcelFileDescriptor
-import android.provider.DocumentsContract
 import android.provider.Settings
 import android.view.ViewGroup
 import android.widget.Button
@@ -125,9 +124,8 @@ class MainActivity : Activity() {
             refreshRustButtons()
             if (cancelAfterDelay) Handler(Looper.getMainLooper()).postDelayed({ signal.cancel() }, 50)
             Thread {
-                val uri = DocumentsContract.buildDocumentUri("$packageName.documents", RustFixtureDocument.ID)
                 val result = try {
-                    val descriptor = requireNotNull(contentResolver.openFileDescriptor(uri, "r", signal))
+                    val descriptor = RustFixtureDocument.openCancelable(this, signal)
                     val content = ParcelFileDescriptor.AutoCloseInputStream(descriptor).use { input ->
                         input.bufferedReader(Charsets.UTF_8).readText()
                     }
