@@ -2,7 +2,7 @@
 
 ## Installation and language
 
-1. Sign into GitHub with access to this private repository. Download `suizai-<version>.apk`, `SHA256SUMS` and this guide from the Release. Manual testing does not require `androidTest.apk`.
+1. Download `suizai-<version>.apk`, `SHA256SUMS` and this guide from the Release. Manual testing does not require `androidTest.apk`.
 2. Compare `shasum -a 256 suizai-<version>.apk` with `SHA256SUMS`. Release and Packages contain the same application APK.
 3. Install on an Android 8.0+ test device and allow the installation source when prompted. Each CI build uses a different debug signing key; replacing an older build may require uninstalling it, which deletes the app's local data and test files. Preserve needed test records first.
 4. Open the app. First launch defaults to **台灣正體中文** (Taiwan Traditional Chinese). Use **語言 / Language** to select **English** or **日本語**, close and reopen the app, and confirm your choice is retained. This does not change the phone or BOOK☆WALKER language.

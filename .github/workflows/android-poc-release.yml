@@ -44,7 +44,12 @@ jobs:
           packages: platform-tools
 
       - name: Install project SDK
-        run: sdkmanager --install "platforms;android-36" "build-tools;36.0.0"
+        run: sdkmanager --install "platforms;android-36" "build-tools;36.0.0" "ndk;27.2.12479018" "cmake;3.22.1"
+
+      - name: Install pinned Rust Android targets
+        run: |
+          rustup toolchain install 1.85.1 --profile minimal
+          rustup target add --toolchain 1.85.1 aarch64-linux-android x86_64-linux-android
 
       - uses: gradle/actions/setup-gradle@v6
         with:
@@ -103,7 +108,7 @@ jobs:
             -Dpackaging=apk \
             -Dfile="dist/suizai-${VERSION}.apk" \
             -DgeneratePom=true \
-            -Ddescription="SUIZAI Phase 0 local mock Android test APK"
+            -Ddescription="SUIZAI Phase 0 local mock and opt-in Rust bridge Android test APK"
 
       - name: Publish prerelease and download links
         env:
@@ -112,7 +117,7 @@ jobs:
           TAG: ${{ github.ref_name }}
         run: |
           gh release create "$TAG" dist/* --verify-tag --prerelease \
-            --title "Android 三語測試版 ${VERSION}" --notes-file dist/TESTING.md
+            --title "Android 三語 Rust 橋接測試版 ${VERSION}" --notes-file dist/TESTING.md
           {
             echo "## Android 實機測試"
             echo "[下載 APK 與三語測試指南](https://github.com/${GITHUB_REPOSITORY}/releases/tag/${TAG})"

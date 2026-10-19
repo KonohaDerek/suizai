@@ -29,3 +29,15 @@ jobs:
         run: |
           (cd core && cargo fmt --check)
           sh core/test-ffi.sh
+      - name: Check source-level ABI debugging on Linux
+        if: runner.os == 'Linux'
+        run: |
+          gdb --batch -ex 'set pagination off' -ex 'break suizai_fixture_read' -ex run -ex bt -ex 'info args' core/target/ffi_smoke | tee core/target/debugging.txt
+          grep -q 'Breakpoint 1,.*suizai_fixture_read' core/target/debugging.txt
+      - uses: actions/upload-artifact@v4
+        if: runner.os == 'Linux' && always()
+        with:
+          name: rust-abi-debugging
+          path: core/target/debugging.txt
+          if-no-files-found: warn
+          retention-days: 14
