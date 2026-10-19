@@ -1,0 +1,17 @@
+name: iOS Phase 0
+
+on:
+  push:
+    paths: ["ios/**", ".github/workflows/ios-phase0.yml"]
+  pull_request:
+    paths: ["ios/**", ".github/workflows/ios-phase0.yml"]
+
+jobs:
+  build-and-test:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test mock store
+        run: swift test --package-path ios
+      - name: Build app and File Provider extension
+        run: xcodebuild -project ios/SuizaiPhase0.xcodeproj -target SuizaiPhase0 -sdk iphonesimulator -configuration Debug CODE_SIGNING_ALLOWED=NO build
