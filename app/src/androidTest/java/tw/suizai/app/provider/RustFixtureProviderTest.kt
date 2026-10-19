@@ -4,6 +4,7 @@ import android.content.ContentResolver
 import android.os.CancellationSignal
 import android.os.Debug
 import android.os.OperationCanceledException
+import android.os.ParcelFileDescriptor
 import android.os.SystemClock
 import android.provider.DocumentsContract
 import android.provider.DocumentsContract.Document
@@ -16,7 +17,6 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import tw.suizai.app.AppLanguage
-import java.io.FileInputStream
 import java.io.FileNotFoundException
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -90,9 +90,8 @@ class RustFixtureProviderTest {
         try {
             val result = pool.submit<Boolean> {
                 try {
-                    resolver.openFileDescriptor(fixture, "r", signal)!!.use { descriptor ->
-                        FileInputStream(descriptor.fileDescriptor).readBytes()
-                        descriptor.checkError()
+                    resolver.openFileDescriptor(fixture, "r", signal)!!.let { descriptor ->
+                        ParcelFileDescriptor.AutoCloseInputStream(descriptor).use { it.readBytes() }
                     }
                     false
                 } catch (_: OperationCanceledException) {
@@ -123,8 +122,8 @@ class RustFixtureProviderTest {
     private fun measure(source: String, uri: android.net.Uri) {
         val before = Debug.MemoryInfo().also { Debug.getMemoryInfo(it) }.totalPss
         val start = SystemClock.elapsedRealtimeNanos()
-        val bytes = resolver.openFileDescriptor(uri, "r")!!.use { descriptor ->
-            FileInputStream(descriptor.fileDescriptor).readBytes().also { descriptor.checkError() }
+        val bytes = resolver.openFileDescriptor(uri, "r")!!.let { descriptor ->
+            ParcelFileDescriptor.AutoCloseInputStream(descriptor).use { it.readBytes() }
         }
         val elapsedMs = (SystemClock.elapsedRealtimeNanos() - start) / 1_000_000.0
         val after = Debug.MemoryInfo().also { Debug.getMemoryInfo(it) }.totalPss
@@ -151,8 +150,10 @@ class RustFixtureProviderTest {
         assertEquals(0, RustFixture.nativeActiveHandles())
     }
 
-    private fun read(uri: android.net.Uri): String = resolver.openFileDescriptor(uri, "r")!!.use { descriptor ->
-        FileInputStream(descriptor.fileDescriptor).bufferedReader(Charsets.UTF_8).readText().also { descriptor.checkError() }
+    private fun read(uri: android.net.Uri): String = resolver.openFileDescriptor(uri, "r")!!.let { descriptor ->
+        ParcelFileDescriptor.AutoCloseInputStream(descriptor).use { input ->
+            input.bufferedReader(Charsets.UTF_8).readText()
+        }
     }
 
     private fun childId(parent: android.net.Uri, name: String): String {
