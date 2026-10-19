@@ -7,6 +7,7 @@ local.properties
 
 # Apple / Xcode
 DerivedData/
+.build/
 *.xcuserstate
 xcuserdata/
 
