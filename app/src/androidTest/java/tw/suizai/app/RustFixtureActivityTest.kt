@@ -1,6 +1,7 @@
 package tw.suizai.app
 
 import android.os.SystemClock
+import android.os.CancellationSignal
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
@@ -41,12 +42,20 @@ class RustFixtureActivityTest {
 
             AppLanguage.select(context, "zh-TW")
             val scenario = ActivityScenario.launch(MainActivity::class.java)
+            var activeSignal: CancellationSignal? = null
             try {
                 tap(scenario, R.string.rust_read)
+                scenario.onActivity { activity ->
+                    // Observe the actual operation without exposing a production test API.
+                    val field = MainActivity::class.java.getDeclaredField("activeRustRead")
+                    field.isAccessible = true
+                    activeSignal = field.get(activity) as CancellationSignal
+                }
                 awaitHandles(active = true)
             } finally {
                 scenario.close()
             }
+            assertTrue("Activity destruction must cancel its active read", activeSignal?.isCanceled == true)
             awaitHandles(active = false)
         } finally {
             AppLanguage.select(context, originalLanguage)
