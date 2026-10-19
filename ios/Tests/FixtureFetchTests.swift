@@ -4,6 +4,35 @@ import Darwin
 import SuizaiBridge
 
 final class FixtureFetchTests: XCTestCase {
+    func testFixtureProjectionSingleItemChangesAndReservedRootName() throws {
+        let (directory, store) = try workspace()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let zh = try XCTUnwrap(FixtureSettings.projectedEntry(enabled: true, locale: "zh-TW", nativeRootCollision: false))
+        XCTAssertEqual(zh.parentID, MockStore.rootID)
+        XCTAssertEqual(FixtureSettings.listedEntry(in: MockStore.rootID, fixture: zh)?.id, FixtureSettings.id)
+        XCTAssertEqual(FixtureSettings.listedEntry(in: "working-set", fixture: zh)?.id, FixtureSettings.id)
+        XCTAssertEqual(FixtureSettings.listedEntry(in: FixtureSettings.id, fixture: zh)?.id, FixtureSettings.id)
+        XCTAssertNil(FixtureSettings.listedEntry(in: "folder-notes", fixture: zh))
+        XCTAssertEqual(FixtureSettings.change(in: FixtureSettings.id, from: 0, fixture: zh).update?.id, FixtureSettings.id)
+        XCTAssertNil(FixtureSettings.change(in: FixtureSettings.id, from: zh.contentRevision, fixture: zh).update)
+        let en = FixtureSettings.entry(locale: "en")
+        XCTAssertEqual(FixtureSettings.change(in: FixtureSettings.id, from: zh.contentRevision, fixture: en).update?.contentRevision, en.contentRevision)
+        XCTAssertEqual(FixtureSettings.change(in: FixtureSettings.id, from: en.contentRevision, fixture: nil).deletion, FixtureSettings.id)
+        XCTAssertEqual(FixtureSettings.change(in: FixtureSettings.id, from: 0, fixture: en).update?.id, FixtureSettings.id)
+        XCTAssertNil(FixtureSettings.change(in: "folder-notes", from: 0, fixture: en).update)
+
+        XCTAssertTrue(FixtureSettings.conflictsWithReservedName(parentID: MockStore.rootID, name: FixtureSettings.filename)) // create
+        XCTAssertTrue(FixtureSettings.conflictsWithReservedName(parentID: MockStore.rootID, name: FixtureSettings.filename,
+                                                                current: try store.item("file-welcome"))) // rename/move
+        XCTAssertFalse(FixtureSettings.conflictsWithReservedName(parentID: "folder-notes", name: FixtureSettings.filename))
+        let oldFile = try store.create(parentID: MockStore.rootID, name: FixtureSettings.filename, isDirectory: false)
+        XCTAssertFalse(FixtureSettings.conflictsWithReservedName(parentID: MockStore.rootID, name: FixtureSettings.filename, current: oldFile))
+        XCTAssertNil(FixtureSettings.projectedEntry(enabled: true, locale: "en", nativeRootCollision:
+            try store.item(parentID: MockStore.rootID, name: FixtureSettings.filename) != nil))
+        XCTAssertEqual(try store.item(oldFile.id), oldFile) // An older native file is preserved on enable.
+        XCTAssertNil(FixtureSettings.projectedEntry(enabled: false, locale: "en", nativeRootCollision: false))
+    }
+
     private func workspace() throws -> (URL, MockStore) {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         return (directory, try MockStore(directory: directory))

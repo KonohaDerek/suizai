@@ -25,8 +25,12 @@ private enum ProviderFiles {
         if id == .workingSet { return "working-set" }
         return id.rawValue
     }
-    static var fixtureState: Int { FixtureSettings.enabled ? FixtureSettings.entry(locale: FixtureSettings.locale).contentRevision : 0 }
-    static func anchor(_ sequence: Int, fixtureState: Int = ProviderFiles.fixtureState) -> NSFileProviderSyncAnchor {
+    static func fixture(in store: MockStore) throws -> MockEntry? {
+        let collision = try store.item(parentID: MockStore.rootID, name: FixtureSettings.filename) != nil
+        return FixtureSettings.projectedEntry(enabled: FixtureSettings.enabled, locale: FixtureSettings.locale,
+                                              nativeRootCollision: collision)
+    }
+    static func anchor(_ sequence: Int, fixtureState: Int) -> NSFileProviderSyncAnchor {
         NSFileProviderSyncAnchor(Data("\(sequence)|\(fixtureState)".utf8))
     }
     static func sequence(_ anchor: NSFileProviderSyncAnchor) throws -> Int {
@@ -74,37 +78,38 @@ final class ProviderEnumerator: NSObject, NSFileProviderEnumerator {
     func enumerateItems(for observer: NSFileProviderEnumerationObserver, startingAt page: NSFileProviderPage) {
         do {
             let store = try ProviderFiles.store()
+            let fixture = try ProviderFiles.fixture(in: store)
             let entries: [MockEntry]
             if containerID == "working-set" { entries = try store.allItems() }
             else if let item = try store.item(containerID), !item.isDirectory { entries = [item] }
             else { entries = try store.children(of: containerID) }
             var visible = entries
-            if FixtureSettings.enabled && (containerID == "folder-notes" || containerID == "working-set") {
-                visible.append(FixtureSettings.entry(locale: FixtureSettings.locale))
-            }
+            if let item = FixtureSettings.listedEntry(in: containerID, fixture: fixture) { visible.append(item) }
             observer.didEnumerate(visible.map { ProviderItem($0) })
             observer.finishEnumerating(upTo: nil)
         } catch { observer.finishEnumeratingWithError(ProviderFiles.error(error)) }
     }
     func enumerateChanges(for observer: NSFileProviderChangeObserver, from anchor: NSFileProviderSyncAnchor) {
         do {
-            let changes = try ProviderFiles.store().changes(after: ProviderFiles.sequence(anchor), in: containerID)
+            let store = try ProviderFiles.store()
+            let changes = try store.changes(after: ProviderFiles.sequence(anchor), in: containerID)
             var updates = changes.updates
             var deletions = changes.deletions
-            let fixture = FixtureSettings.enabled ? FixtureSettings.entry(locale: FixtureSettings.locale) : nil
+            let fixture = try ProviderFiles.fixture(in: store)
             let currentFixtureState = fixture?.contentRevision ?? 0
-            if (containerID == "folder-notes" || containerID == "working-set") &&
-                ProviderFiles.fixtureState(anchor) != currentFixtureState {
-                if let fixture { updates.append(fixture) }
-                else { deletions.append(FixtureSettings.id) }
-            }
+            let change = FixtureSettings.change(in: containerID, from: ProviderFiles.fixtureState(anchor), fixture: fixture)
+            if let update = change.update { updates.append(update) }
+            if let deletion = change.deletion { deletions.append(deletion) }
             if !updates.isEmpty { observer.didUpdate(updates.map { ProviderItem($0) }) }
             if !deletions.isEmpty { observer.didDeleteItems(withIdentifiers: deletions.map { NSFileProviderItemIdentifier($0) }) }
             observer.finishEnumeratingChanges(upTo: ProviderFiles.anchor(changes.anchor, fixtureState: currentFixtureState), moreComing: false)
         } catch { observer.finishEnumeratingWithError(ProviderFiles.error(error)) }
     }
     func currentSyncAnchor(completionHandler: @escaping (NSFileProviderSyncAnchor?) -> Void) {
-        completionHandler(try? ProviderFiles.anchor(ProviderFiles.store().currentAnchor()))
+        completionHandler(try? {
+            let store = try ProviderFiles.store()
+            return ProviderFiles.anchor(try store.currentAnchor(), fixtureState: try ProviderFiles.fixture(in: store)?.contentRevision ?? 0)
+        }())
     }
 }
 
@@ -115,7 +120,10 @@ final class Provider: NSObject, NSFileProviderReplicatedExtension {
     func item(for identifier: NSFileProviderItemIdentifier, request: NSFileProviderRequest, completionHandler: @escaping (NSFileProviderItem?, Error?) -> Void) -> Progress {
         do {
             if identifier == .rootContainer { completionHandler(ProviderItem(nil), nil) }
-            else if FixtureSettings.enabled && identifier.rawValue == FixtureSettings.id { completionHandler(ProviderItem(FixtureSettings.entry(locale: FixtureSettings.locale)), nil) }
+            else if identifier.rawValue == FixtureSettings.id {
+                if let fixture = try ProviderFiles.fixture(in: ProviderFiles.store()) { completionHandler(ProviderItem(fixture), nil) }
+                else { completionHandler(nil, NSFileProviderError(.noSuchItem)) }
+            }
             else if let item = try ProviderFiles.store().item(identifier.rawValue) { completionHandler(ProviderItem(item), nil) }
             else { completionHandler(nil, NSFileProviderError(.noSuchItem)) }
         } catch { completionHandler(nil, ProviderFiles.error(error)) }
@@ -130,7 +138,7 @@ final class Provider: NSObject, NSFileProviderReplicatedExtension {
             let destination = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
             let locale = FixtureSettings.locale
             return FixtureFetch.start(store: store, id: itemIdentifier.rawValue, destination: destination,
-                                      enabled: FixtureSettings.enabled, locale: locale,
+                                      enabled: try ProviderFiles.fixture(in: store) != nil, locale: locale,
                                       delay: FixtureSettings.delay) { url, entry, error in
                 completionHandler(url, entry.map { ProviderItem($0) }, error.map(ProviderFiles.error))
             }
@@ -141,6 +149,9 @@ final class Provider: NSObject, NSFileProviderReplicatedExtension {
     }
     func createItem(basedOn itemTemplate: NSFileProviderItem, fields: NSFileProviderItemFields, contents url: URL?, options: NSFileProviderCreateItemOptions, request: NSFileProviderRequest, completionHandler: @escaping (NSFileProviderItem?, NSFileProviderItemFields, Bool, Error?) -> Void) -> Progress {
         do {
+            if FixtureSettings.conflictsWithReservedName(parentID: ProviderFiles.internalID(itemTemplate.parentItemIdentifier), name: itemTemplate.filename) {
+                throw NSFileProviderError(.filenameCollision)
+            }
             let isDirectory = itemTemplate.contentType?.conforms(to: .folder) == true
             let data = isDirectory ? Data() : try url.map { try Data(contentsOf: $0) } ?? Data()
             let entry = try ProviderFiles.store().create(parentID: ProviderFiles.internalID(itemTemplate.parentItemIdentifier), name: itemTemplate.filename, isDirectory: isDirectory, contents: data)
@@ -152,6 +163,11 @@ final class Provider: NSObject, NSFileProviderReplicatedExtension {
     func modifyItem(_ item: NSFileProviderItem, baseVersion version: NSFileProviderItemVersion, changedFields: NSFileProviderItemFields, contents newContents: URL?, options: NSFileProviderModifyItemOptions, request: NSFileProviderRequest, completionHandler: @escaping (NSFileProviderItem?, NSFileProviderItemFields, Bool, Error?) -> Void) -> Progress {
         do {
             let store = try ProviderFiles.store()
+            let existing = try store.item(item.itemIdentifier.rawValue)
+            if FixtureSettings.conflictsWithReservedName(parentID: ProviderFiles.internalID(item.parentItemIdentifier),
+                                                         name: item.filename, current: existing) {
+                throw NSFileProviderError(.filenameCollision)
+            }
             let data = try newContents.map { try Data(contentsOf: $0) }
             let (entry, oldParentID) = try store.modify(id: item.itemIdentifier.rawValue, parentID: ProviderFiles.internalID(item.parentItemIdentifier), name: item.filename, contents: data)
             completionHandler(ProviderItem(entry), [], false, nil)
@@ -172,5 +188,8 @@ final class Provider: NSObject, NSFileProviderReplicatedExtension {
         guard let manager = NSFileProviderManager(for: domain) else { return }
         for id in Set(ids) { manager.signalEnumerator(for: ProviderFiles.externalID(id)) { _ in } }
         manager.signalEnumerator(for: .workingSet) { _ in }
+        if ids.contains(MockStore.rootID) && FixtureSettings.enabled {
+            manager.signalEnumerator(for: NSFileProviderItemIdentifier(FixtureSettings.id)) { _ in }
+        }
     }
 }

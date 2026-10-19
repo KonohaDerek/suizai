@@ -6,6 +6,7 @@ import SuizaiBridge
 enum FixtureSettings {
     static let group = "group.dev.suizai.phase0"
     static let id = "bridge-welcome"
+    static let filename = "SUIZAI-Rust.txt"
     static var defaults: UserDefaults? { UserDefaults(suiteName: group) }
     static var enabled: Bool { defaults?.bool(forKey: "rustFixtureEnabled") ?? false }
     static var locale: String { defaults?.string(forKey: "rustFixtureLocale") ?? "zh-TW" }
@@ -20,8 +21,28 @@ enum FixtureSettings {
         } else {
             text = "SUIZAI 共用核心測試檔案\n"; contentRevision = 1
         }
-        return MockEntry(id: id, parentID: "folder-notes", name: "SUIZAI-Rust.txt", isDirectory: false,
+        return MockEntry(id: id, parentID: MockStore.rootID, name: filename, isDirectory: false,
                          revision: 1, contentRevision: contentRevision, size: text.utf8.count)
+    }
+
+    static func projectedEntry(enabled: Bool, locale: String, nativeRootCollision: Bool) -> MockEntry? {
+        enabled && !nativeRootCollision ? entry(locale: locale) : nil
+    }
+
+    static func conflictsWithReservedName(parentID: String, name: String, current: MockEntry? = nil) -> Bool {
+        parentID == MockStore.rootID && name == filename &&
+            (current?.parentID != MockStore.rootID || current?.name != filename)
+    }
+
+    static func listedEntry(in containerID: String, fixture: MockEntry?) -> MockEntry? {
+        guard containerID == MockStore.rootID || containerID == "working-set" || containerID == id else { return nil }
+        return fixture
+    }
+
+    static func change(in containerID: String, from oldState: Int, fixture: MockEntry?) -> (update: MockEntry?, deletion: String?) {
+        guard containerID == MockStore.rootID || containerID == "working-set" || containerID == id else { return (nil, nil) }
+        guard oldState != (fixture?.contentRevision ?? 0) else { return (nil, nil) }
+        return fixture.map { ($0, nil) } ?? (nil, id)
     }
 }
 
